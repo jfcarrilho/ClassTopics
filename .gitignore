@@ -1,0 +1,18 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rcheck/
+*.tar.gz
+
+# Never commit compiled Stan binaries or intermediate build artifacts —
+# these are machine/OS-specific and are compiled on first use by users.
+inst/stan/*.exe
+inst/stan/*.o
+inst/stan/*.hpp
+src/*.o
+src/*.so
+src/*.dll
+.httr-oauth
+.DS_Store
+.quarto

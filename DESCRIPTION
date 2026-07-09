@@ -1,0 +1,54 @@
+Package: ClassTopics
+Type: Package
+Title: Supervised Topic Models for Multiclass Response Prediction via Stan
+Version: 0.1.0
+Authors@R: 
+  c(person(
+      given = "João F.",
+      family = "Carrilho",
+      email = "jf.carrilho@campus.fct.unl.pt",
+      role = c("aut", "cre"),
+      comment = c(ORCID = "0009-0002-2265-8922")),
+    person(
+      given = "Marta B.",
+      family = "Lopes",
+      email = "marta.lopes@fct.unl.pt",
+      role = c("aut"),
+      comment = c(ORCID = "0000-0002-4135-1857")),
+    person(
+      given = "Susan P.",
+      family = "Holmes",
+      email = "sph@stanford.edu",
+      role = c("aut"),
+      comment = c(ORCID = "0000-0002-2208-8168"))
+  )
+Description: Fits supervised topic models to count data (e.g. gene expression)
+    jointly with a multiclass response via integrated non-negative matrix
+    factorization and latent Dirichlet allocation, using Stan (via cmdstanr)
+    for full Bayesian inference and an EM warm-start for initialization.
+    Provides cross-validation, prediction on new samples, and diagnostic
+    plots for topic-response associations.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 8.0.0
+Depends: 
+    R (>= 4.1.0)
+Imports:
+    cmdstanr,
+    posterior,
+    ggplot2,
+    dplyr,
+    tidytext,
+    reshape2,
+    rlang,
+    tools,
+    future,
+    methods,
+    stats
+Suggests:
+    testthat (>= 3.0.0)
+Additional_repositories: https://mc-stan.org/r-packages/
+Config/testthat/edition: 3
+URL: https://github.com/jfcarrilho/ClassTopics
+BugReports: https://github.com/jfcarrilho/ClassTopics/issues
