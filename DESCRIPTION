@@ -1,6 +1,6 @@
 Package: ClassTopics
 Type: Package
-Title: Supervised Topic Models for Multiclass Response Prediction via Stan
+Title: Supervised Topic Models for Binary or Categorical Response Prediction via Stan
 Version: 0.1.0
 Authors@R: 
   c(person(
@@ -23,7 +23,7 @@ Authors@R:
       comment = c(ORCID = "0000-0002-2208-8168"))
   )
 Description: Fits supervised topic models to count data (e.g. gene expression)
-    jointly with a multiclass response via integrated non-negative matrix
+    jointly with a binary or categorical response via integrated non-negative matrix
     factorization and latent Dirichlet allocation, using Stan (via cmdstanr)
     for full Bayesian inference and an EM warm-start for initialization.
     Provides cross-validation, prediction on new samples, and diagnostic
