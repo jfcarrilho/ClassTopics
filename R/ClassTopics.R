@@ -323,9 +323,9 @@ ClassTopics <- function(gene_counts,
 # K-FOLD CROSS-VALIDATION FOR ClassTopics
 # =============================================================================
 
-#' Secondary function that prepares a list to accommodate the results from
-#' each fold in cross-validation
-#' 
+# Secondary function that prepares a list to accommodate the results from
+# each fold in cross-validation
+# 
 #' @param D number of observations in the full dataset
 #' @param response_levels character, class labels
 #' @param k_folds number of folds for cross-validation
@@ -358,8 +358,8 @@ ClassTopics <- function(gene_counts,
   return(pred_n_acc)
 }
 
-#' Create Stratified Folds
-#'
+# Create Stratified Folds
+#
 #' @param response Factor vector of class labels to stratify by.
 #' @param k_folds Integer, number of folds to create.
 #'
@@ -572,8 +572,8 @@ predict_ClassTopics_EM <- function(
 # K-FOLD CROSS-VALIDATION FOR ClassTopics
 # ============================================================================
 
-#' K-Fold Cross-Validation for ClassTopics (For unbiased estimation)
-#'
+# K-Fold Cross-Validation for ClassTopics (For unbiased estimation)
+#
 #' @param gene_counts gene count matrix
 #' @param response character or factor vector on the class labels
 #' @param folds list whose elements are train-test partitions
@@ -806,8 +806,8 @@ predict_ClassTopics_EM <- function(
   return(pred_n_acc)
 }
 
-#' K-Fold Cross-Validation for ClassTopics (For unbiased estimation)
-#'
+# K-Fold Cross-Validation for ClassTopics (For unbiased estimation)
+#
 #' @param gene_counts gene count matrix
 #' @param response character or factor vector on the class labels
 #' @param folds list whose elements are train-test partitions (as produced
@@ -965,8 +965,8 @@ predict_ClassTopics_EM <- function(
   )))
 }
 
-#' Aggregate Per-Fold Predictions and Accuracies
-#'
+# Aggregate Per-Fold Predictions and Accuracies
+#
 #' Combines the per-fold prediction/accuracy lists produced by
 #' `.cv_ClassTopics_fold_by_fold()` into pooled cross-validation summary
 #' statistics.
@@ -1012,8 +1012,8 @@ predict_ClassTopics_EM <- function(
   return(pred_n_acc)
 }
 
-#' K-Fold Cross-Validation for ClassTopics (For unbiased estimation)
-#'
+# K-Fold Cross-Validation for ClassTopics (For unbiased estimation)
+#
 #' @param gene_counts gene count matrix
 #' @param response character or factor vector on the class labels
 #' @param k_folds number of folds to create for cross-validation (default = 5)
