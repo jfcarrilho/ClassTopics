@@ -11,12 +11,12 @@
 #     directory (tools::R_user_dir("ClassTopics", "cache")), and reused on
 #     every subsequent call. This is what "compile on first use" means here.
 
-#' Names of the Stan models shipped with ClassTopics
+# Names of the Stan models shipped with ClassTopics
 #' @keywords internal
 .stan_model_names <- c("model_betadir", "model_pureNMF", "model_test")
 
-#' Locate the installed .stan source file for a given model
-#'
+# Locate the installed .stan source file for a given model
+#
 #' @param model_name One of "model_betadir", "model_pureNMF", "model_test"
 #' @return Absolute path to the installed .stan file
 #' @keywords internal
@@ -45,12 +45,12 @@
   path
 }
 
-#' Directory where compiled Stan executables are cached for this user
-#'
-#' Uses tools::R_user_dir(), the standard writable, per-user, per-package
-#' cache location (respects XDG conventions on Linux/macOS and
-#' %LOCALAPPDATA% on Windows). Falls back to tempdir() if unavailable.
-#'
+# Directory where compiled Stan executables are cached for this user
+#
+# Uses tools::R_user_dir(), the standard writable, per-user, per-package
+# cache location (respects XDG conventions on Linux/macOS and
+# %LOCALAPPDATA% on Windows). Falls back to tempdir() if unavailable.
+#
 #' @return Absolute path to the cache directory (created if needed)
 #' @keywords internal
 .stan_cache_dir <- function() {
@@ -67,15 +67,15 @@
   cache_dir
 }
 
-#' Get a compiled cmdstanr model, compiling (and caching) on first use
-#'
-#' This is the single entry point every fitting function should call instead
-#' of hardcoding "stan_files/model_xxx.exe" / ".stan" paths. It:
-#'   1. Finds the shipped .stan source via system.file()
-#'   2. Checks the user's cache dir for an up-to-date compiled executable
-#'   3. Compiles (once) if missing or stale, writing the exe into the cache
-#'   4. Returns a ready-to-use CmdStanModel object
-#'
+# Get a compiled cmdstanr model, compiling (and caching) on first use
+#
+# This is the single entry point every fitting function should call instead
+# of hardcoding "stan_files/model_xxx.exe" / ".stan" paths. It:
+#   1. Finds the shipped .stan source via system.file()
+#   2. Checks the user's cache dir for an up-to-date compiled executable
+#   3. Compiles (once) if missing or stale, writing the exe into the cache
+#   4. Returns a ready-to-use CmdStanModel object
+#
 #' @param model_name One of "model_betadir", "model_pureNMF", "model_test"
 #' @param quiet Logical, passed to cmdstanr's compile() to suppress
 #'   compiler output (default TRUE)

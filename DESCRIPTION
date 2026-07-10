@@ -1,6 +1,6 @@
 Package: ClassTopics
 Type: Package
-Title: Supervised Topic Models for Multiclass Response Prediction via Stan
+Title: Supervised Topic Models for Binary or Categorical Response Prediction via Stan
 Version: 0.1.0
 Authors@R: 
   c(person(
