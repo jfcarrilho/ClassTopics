@@ -4,8 +4,6 @@
 .Ruserdata
 *.Rcheck/
 *.tar.gz
-vignettes/*.html
-vignettes/*.R
 
 # Never commit compiled Stan binaries or intermediate build artifacts —
 # these are machine/OS-specific and are compiled on first use by users.

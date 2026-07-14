@@ -23,19 +23,11 @@ Authors@R:
       comment = c(ORCID = "0000-0002-2208-8168"))
   )
 Description: Fits supervised topic models to count data (e.g. gene expression)
-<<<<<<< HEAD
     jointly with a binary or categorical response via integrated non-negative
     matrix factorization and latent Dirichlet allocation, using Stan (via
     cmdstanr) for full Bayesian inference and an EM warm-start for
     initialization. Provides cross-validation, prediction on new samples, and
     diagnostic plots for topic-response associations.
-=======
-    jointly with a binary or categorical response via integrated non-negative matrix
-    factorization and latent Dirichlet allocation, using Stan (via cmdstanr)
-    for full Bayesian inference and an EM warm-start for initialization.
-    Provides cross-validation, prediction on new samples, and diagnostic
-    plots for topic-response associations.
->>>>>>> 81565ab30b70382ad2a484a8f5c90dd9a8ba4e20
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
