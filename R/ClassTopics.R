@@ -87,7 +87,7 @@
 #' @param K number of topics to be modeled (default = \code{6})
 #' @param sigma_eta scalar prior sd of the coefficients of the eta matrix. If
 #'                  \code{NULL} (default), it is internally defined as
-#'                  \eqn{2/\sqrt{lambda_cat}}
+#'                  \eqn{2/\sqrt{\mathtt{lambda\_cat}}}
 #' @param betadir logical, controls whether beta is estimated with Dirichlet
 #'                prior (default = \code{TRUE})
 #' @param alpha_beta numeric hyperparameter of the symmetric Dirichlet
@@ -587,7 +587,7 @@ predict_ClassTopics_EM <- function(
 #' @param K_topics number of topics to be modeled (default = \code{3})
 #' @param sigma_eta scalar prior sd of the coefficients of the eta matrix. If
 #'                  NULL (default), it is internally defined as
-#'                  \eqn{2/\sqrt{lambda_cat}}
+#'                  \eqn{2/\sqrt{\mathtt{lambda\_cat}}}
 #' @param betadir logical, controls whether beta is estimated with Dirichlet
 #'                prior (default = \code{TRUE}) or, if \code{FALSE}, with Gamma prior
 #' @param alpha_beta numeric hyperparameter of the symmetric Dirichlet

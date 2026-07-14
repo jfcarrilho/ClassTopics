@@ -34,7 +34,7 @@ ClassTopics(
 
 \item{sigma_eta}{scalar prior sd of the coefficients of the eta matrix. If
 \code{NULL} (default), it is internally defined as
-\eqn{2/\sqrt{lambda_cat}}}
+\eqn{2/\sqrt{\mathtt{lambda\_cat}}}}
 
 \item{betadir}{logical, controls whether beta is estimated with Dirichlet
 prior (default = \code{TRUE})}
