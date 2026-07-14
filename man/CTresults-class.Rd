@@ -5,8 +5,8 @@
 \alias{CTresults-class}
 \alias{getPredictions}
 \alias{getPredictions,CTresults-method}
-\alias{topGenes}
-\alias{topGenes,CTresults-method}
+\alias{topVars}
+\alias{topVars,CTresults-method}
 \alias{regressionCoefficients}
 \alias{regressionCoefficients,CTresults-method}
 \alias{getFit}
@@ -18,9 +18,9 @@ getPredictions(x)
 
 \S4method{getPredictions}{CTresults}(x)
 
-topGenes(x, ...)
+topVars(x, ...)
 
-\S4method{topGenes}{CTresults}(x, ...)
+\S4method{topVars}{CTresults}(x, ...)
 
 regressionCoefficients(x)
 
@@ -44,24 +44,24 @@ consistency with methods that may accept extra arguments).}
 Top-level S4 class summarizing the output of
 \code{\link{ClassTopics_results}}. It bundles parameter estimates
 (theta, beta, eta), topic correlations, interpretable summaries (top
-genes, regression coefficients), in-sample prediction results, and
+variables, regression coefficients), in-sample prediction results, and
 metadata, alongside the raw cmdStan fit object from which these
 summaries were derived.
 }
 \section{Slots}{
 
 \describe{
-\item{\code{theta}}{An \code{CTparameter} object: document-topic proportions.}
+\item{\code{theta}}{A \code{CTparameter} object: document-topic proportions.}
 
-\item{\code{beta}}{An \code{CTparameter} object: topic-gene loadings.}
+\item{\code{beta}}{A \code{CTparameter} object: topic-variable loadings.}
 
-\item{\code{eta}}{An \code{CTparameter} object: topic-category regression
+\item{\code{eta}}{A \code{CTparameter} object: topic-category regression
 parameters.}
 
 \item{\code{topic_correlations}}{Numeric matrix of correlations between topics.}
 
-\item{\code{top_genes}}{A named list of \code{data.frame}s, one per topic, each
-giving the top genes and their loading estimates (mean/lower/upper).}
+\item{\code{top_vars}}{A named list of \code{data.frame}s, one per topic, each
+giving the top variables and their loading estimates (mean/lower/upper).}
 
 \item{\code{regression_coefficients}}{A \code{data.frame} summary of \code{eta},
 melted by (category, topic) pairs, with columns for the posterior mean
@@ -72,7 +72,7 @@ made by the fitted model.}
 
 \item{\code{response_levels}}{Character vector of category labels.}
 
-\item{\code{gene_names}}{Character vector of gene names.}
+\item{\code{vars_names}}{Character vector of variable names.}
 
 \item{\code{credible_interval}}{Numeric scalar giving the credible interval
 width used (e.g. \code{0.95}).}

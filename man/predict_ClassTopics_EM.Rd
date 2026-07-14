@@ -5,19 +5,19 @@
 \title{Predict Mixed Memberships and Response for New Patients Given Learned Topics via EM only}
 \usage{
 predict_ClassTopics_EM(
-  gene_counts_test,
+  counts_test,
   W,
   eta,
   mu_target,
   response,
-  n_iter_EM_test = 4,
-  ...
+  n_iter_EM = 4,
+  verbose = TRUE
 )
 }
 \arguments{
-\item{gene_counts_test}{Matrix of gene counts}
+\item{counts_test}{Matrix of counts}
 
-\item{W}{Learned topic-gene loadings \code{K, V}}
+\item{W}{Learned topic-variable loadings \code{K, V}}
 
 \item{eta}{Learned regression coefficients \code{C, K}}
 
@@ -25,10 +25,10 @@ predict_ClassTopics_EM(
 
 \item{response}{Character vector of response categories}
 
-\item{n_iter_EM_test}{Number of required EM iterations}
+\item{n_iter_EM}{Number of required EM iterations}
 
-\item{...}{Currently unused; reserved for future arguments (e.g. to be
-forwarded to the internal EM routine).}
+\item{verbose}{logical that controls whether EM likelihood is printed
+(default = \code{TRUE})}
 }
 \value{
 List with predicted classes and probabilities

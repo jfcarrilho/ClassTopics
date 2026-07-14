@@ -2,10 +2,10 @@
 % Please edit documentation in R/ClassTopics.R
 \name{predict_ClassTopics_stan}
 \alias{predict_ClassTopics_stan}
-\title{Predict Mixed Memberships and Response for New Patients Given Learned Topics via Stan}
+\title{Predict Mixed Memberships and Response for New Observations Given Learned Topics via Stan}
 \usage{
 predict_ClassTopics_stan(
-  gene_counts_test,
+  counts_test,
   W,
   eta,
   mu_target,
@@ -16,13 +16,14 @@ predict_ClassTopics_stan(
   seed = 123,
   iter_warmup = 1000,
   iter_sampling = 1000,
-  ...
+  n_iter_EM = 4,
+  verbose = TRUE
 )
 }
 \arguments{
-\item{gene_counts_test}{Matrix of gene counts}
+\item{counts_test}{Matrix of counts}
 
-\item{W}{Learned topic-gene loadings \code{K, V}}
+\item{W}{Learned topic-variable loadings \code{K, V}}
 
 \item{eta}{Learned regression coefficients \code{C, K}}
 
@@ -44,11 +45,14 @@ predict_ClassTopics_stan(
 \item{iter_sampling}{number of sampling iterations for each chain
 (default = \code{1000})}
 
-\item{...}{Additional arguments passed to \code{cmdstanr}'s \verb{$sample()} method}
+\item{n_iter_EM}{Number of required EM iterations}
+
+\item{verbose}{logical that controls whether EM likelihood is printed
+(default = \code{TRUE})}
 }
 \value{
 List with predicted classes and probabilities
 }
 \description{
-Predict Mixed Memberships and Response for New Patients Given Learned Topics via Stan
+Predict Mixed Memberships and Response for New Observations Given Learned Topics via Stan
 }

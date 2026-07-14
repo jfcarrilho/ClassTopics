@@ -7,8 +7,8 @@
 ClassTopics_results(
   fit,
   true_response,
-  gene_names = NULL,
-  top_genes = 10,
+  vars_names = NULL,
+  top_vars = 10,
   credible_interval = 0.95
 )
 }
@@ -17,9 +17,9 @@ ClassTopics_results(
 
 \item{true_response}{Character or factor vector on the class labels}
 
-\item{gene_names}{Character vector of gene names (optional)}
+\item{vars_names}{Character vector of variable names (optional)}
 
-\item{top_genes}{Integer, number of top genes to extract per topic}
+\item{top_vars}{Integer, number of top variables to extract per topic}
 
 \item{credible_interval}{Numeric, credible interval width (default: \code{0.95})}
 }

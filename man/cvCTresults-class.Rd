@@ -23,7 +23,7 @@ getCVPredictions(x)
 Top-level S4 class summarizing the output of
 \code{\link{cv_ClassTopics_results}}. It extends \code{CTresults},
 inheriting all of its slots (theta, beta, eta, topic correlations, top
-genes, regression coefficients, metadata, and the final-model \code{fit}
+variables, regression coefficients, metadata, and the final-model \code{fit}
 object trained on the full dataset), but replaces the \code{predictions}
 slot with \code{cv_predictions}, a \code{\link{cvCTprediction-class}}
 object summarizing cross-validated (out-of-fold) performance rather than
@@ -37,15 +37,15 @@ identified by indexes)}
 
 \item{\code{theta}}{An \code{CTparameter} object: document-topic proportions.}
 
-\item{\code{beta}}{An \code{CTparameter} object: topic-gene loadings.}
+\item{\code{beta}}{An \code{CTparameter} object: topic-variable loadings.}
 
 \item{\code{eta}}{An \code{CTparameter} object: topic-category regression
 parameters.}
 
 \item{\code{topic_correlations}}{Numeric matrix of correlations between topics.}
 
-\item{\code{top_genes}}{A named list of \code{data.frame}s, one per topic, each
-giving the top genes and their loading estimates (mean/lower/upper).}
+\item{\code{top_vars}}{A named list of \code{data.frame}s, one per topic, each
+giving the top variables and their loading estimates (mean/lower/upper).}
 
 \item{\code{regression_coefficients}}{A \code{data.frame} summary of \code{eta},
 melted by (category, topic) pairs, with columns for the posterior mean
@@ -56,7 +56,7 @@ cross-validation accuracy and pooled out-of-fold predictions.}
 
 \item{\code{response_levels}}{Character vector of category labels.}
 
-\item{\code{gene_names}}{Character vector of gene names.}
+\item{\code{vars_names}}{Character vector of variable names.}
 
 \item{\code{credible_interval}}{Numeric scalar giving the credible interval
 width used (e.g. \code{0.95}).}

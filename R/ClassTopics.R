@@ -3,11 +3,13 @@
 # =============================================================================
 
 #' @param H D x K  initial topic loadings (strictly positive)
-#' @param W K x V  initial topic gene profiles (strictly positive)
-#' @param X D x V  gene count matrix
+#' @param W K x V  initial topic distribution estimates (strictly positive)
+#' @param X D x V  count matrix
 #' @param n_iter_EM number of outer EM iterations
 #' @param H_only logical that controls if EM is executed for training
-#'                  (default) or test
+#'                  (default) or \code{123})
+#' @param verbose logical that controls whether the function prints information
+#'                regarding the algorithm steps (default = \code{TRUE})
 
 .em_nmf <- function(H, W, X,
                    n_iter_EM = 20,
@@ -80,7 +82,7 @@
 #' Fits a supervised topic model using integrated LDA and NMF to data with
 #' categorical response variable
 #' 
-#' @param gene_counts gene count matrix
+#' @param counts count matrix
 #' @param response character or factor vector on the class labels
 #' @param K number of topics to be modeled (default = \code{6})
 #' @param sigma_eta scalar prior sd of the coefficients of the eta matrix. If
@@ -112,78 +114,78 @@
 #' @return cmdstan model to interpret with the function ClassTopics_results
 #' 
 #' @details
-#'   `gene_counts` ~ Poisson(`lambda`), `lambda = H %*% W`    (NMF component)
+#'   `counts` ~ Poisson(`lambda`), `lambda = H %*% W`    (NMF component)
 #'   `response` ~ Categorical(softmax(`theta[i,] %*% eta`))  (supervised component)
 #'
 #' Parameters (matching Stan file names exactly):
-#'   \code{H} : D x K  -- patient topic loadings
-#'   \code{W} : K x V  -- topic gene profiles
+#'   \code{H} : D x K  -- observation topic loadings
+#'   \code{W} : K x V  -- topic-variable profiles
 #'
 #' Derived quantities (computed as transformed parameters in Stan,
 #' NOT passed as initial values):
-#'   \code{theta} : D x K  -- topic proportions per patient
-#'   \code{beta}  : K x V  -- gene distributions per topic
+#'   \code{theta} : D x K  -- topic proportions per observation
+#'   \code{beta}  : K x V  -- variable distributions per topic
 #'
 #' @export
-ClassTopics <- function(gene_counts,
-                         response,
-                         K = 6,
-                         sigma_eta = NULL,
-                         betadir = TRUE,
-                         alpha_beta = 0.05,
-                         lambda_cat = 1,
-                         lambda_ridge = 0,
-                         n_iter_EM = 10,
-                         verbose_EM = TRUE,
-                         iter_warmup = 1000,
-                         iter_sampling = 1000,
-                         chains = 3,
-                         cores = 3,
-                         seed = 123,
-                         control = list(adapt_delta = 0.90,
-                                        max_treedepth = 15),
-                         verbose = TRUE){
+ClassTopics <- function(counts,
+                        response,
+                        K = 6,
+                        sigma_eta = NULL,
+                        betadir = TRUE,
+                        alpha_beta = 0.05,
+                        lambda_cat = 1,
+                        lambda_ridge = 0,
+                        n_iter_EM = 10,
+                        verbose_EM = TRUE,
+                        iter_warmup = 1000,
+                        iter_sampling = 1000,
+                        chains = 3,
+                        cores = 3,
+                        seed = 123,
+                        control = list(adapt_delta = 0.90,
+                                       max_treedepth = 15),
+                        verbose = TRUE){
   
   # Input validation
-  if(!is.matrix(gene_counts) && !is.data.frame(gene_counts)){
-    stop("'gene_counts' must be a matrix or data frame")
+  if(!is.matrix(counts) && !is.data.frame(counts)){
+    stop("'counts' must be a matrix or data frame")
   }
   
-  if(is.data.frame(gene_counts)){
-    gene_counts <- as.matrix(gene_counts)
+  if(is.data.frame(counts)){
+    counts <- as.matrix(counts)
   }
   
-  if(!is.numeric(gene_counts)){
-    stop("'gene_counts' must contain numeric values only")
+  if(!is.numeric(counts)){
+    stop("'counts' must contain numeric values only")
   }
   
-  if(any(gene_counts < 0)){
-    stop("'gene_counts' must contain non-negative values only")
+  if(any(counts < 0)){
+    stop("'counts' must contain non-negative values only")
   }
   
-  if(any(gene_counts != floor(gene_counts))){
+  if(any(counts != floor(counts))){
     warning("Non-integer counts detected. Rounding to nearest integer.")
-    gene_counts <- round(gene_counts)
+    counts <- round(counts)
   }
   
-  gene_counts <- matrix(as.integer(gene_counts), nrow = nrow(gene_counts))
+  counts <- matrix(as.integer(counts), nrow = nrow(counts))
   
-  # Filter zero-count genes
-  gene_totals <- colSums(gene_counts)
-  nonzero_genes <- gene_totals > 0
-  n_zero_genes <- sum(!nonzero_genes)
+  # Filter zero-count variables
+  totals <- colSums(counts)
+  nonzero_vars <- totals > 0
+  n_zero_vars <- sum(!nonzero_vars)
   
-  if(n_zero_genes > 0){
+  if(n_zero_vars > 0){
     stop("Remove columns with zero counts before fitting the model")
   }
   
-  if(nrow(gene_counts) != length(response)){
+  if(nrow(counts) != length(response)){
     stop("Number of patients must match length of response")
   }
   
   # Get dimensions
-  D <- nrow(gene_counts)
-  V <- ncol(gene_counts)
+  D <- nrow(counts)
+  V <- ncol(counts)
   
   # Process response
   if(!is.factor(response)){
@@ -195,33 +197,33 @@ ClassTopics <- function(gene_counts,
   response_int <- as.integer(response)
   
   cat(sprintf("\n=== Dataset Summary ===\n"))
-  cat(sprintf("Patients: %d\n", D))
-  cat(sprintf("Genes: %d\n", V))
+  cat(sprintf("Observations: %d\n", D))
+  cat(sprintf("Variables: %d\n", V))
   cat(sprintf("Response categories: %d (%s)\n", C, 
               paste(response_levels, collapse = ", ")))
   
   # Calculate totals
-  total_counts <- sum(gene_counts)
-  patient_totals <- rowSums(gene_counts)
+  total_counts <- sum(counts)
+  patient_totals <- rowSums(counts)
   
-  cat(sprintf("Total gene counts: %.0f\n", total_counts))
-  cat(sprintf("Average counts per patient: %.1f\n", total_counts / D))
-  cat(sprintf("Gene counts range: [%d, %d]\n", min(gene_counts),
-              max(gene_counts)))
-  cat(sprintf("Patient count totals range: [%d, %d]\n", min(patient_totals),
-              max(patient_totals)))
+  cat(sprintf("Total counts: %.0f\n", total_counts))
+  cat(sprintf("Average counts per observation: %.1f\n", total_counts / D))
+  cat(sprintf("Counts range: [%d, %d]\n", min(counts),
+              max(counts)))
+  cat(sprintf("Count totals range: [%d, %d]\n", min(totals),
+              max(totals)))
   
-  if(any(patient_totals == 0)){
-    zero_patients <- sum(patient_totals == 0)
-    stop(sprintf("%d patient%s zero total counts. Remove before fitting", 
-                 zero_patients, ifelse(zero_patients == 1, " has", "s have")))
+  if(any(totals == 0)){
+    zero_observations <- sum(totals == 0)
+    stop(sprintf("%d observation%s zero total counts. Remove before fitting", 
+                 zero_observations, ifelse(zero_observations == 1, " has", "s have")))
   }
   
-  cat(sprintf("\n=== Preparing sNMF Model with K=%d Topics ===\n", K))
+  cat(sprintf("\n=== Preparing ClassTopics Model with K=%d Topics ===\n", K))
   
   #### INITIALIZATION WITH EM ####
   
-  mu_target <- sqrt(mean(gene_counts) / K)
+  mu_target <- sqrt(mean(counts) / K)
   shape <- 2
   
   rate <- 2 / mu_target
@@ -244,7 +246,7 @@ ClassTopics <- function(gene_counts,
     init <- .em_nmf(
       H = H0,
       W = W0,
-      X = gene_counts,
+      X = counts,
       n_iter_EM = n_iter_EM,
       verbose = verbose_EM,
       H_only = FALSE)
@@ -256,7 +258,7 @@ ClassTopics <- function(gene_counts,
     K = K,
     V = V,
     D = D,
-    gene_counts = gene_counts,
+    vars_counts = counts,
     C = C,
     y = response_int,
     shape = shape,
@@ -388,10 +390,10 @@ ClassTopics <- function(gene_counts,
 # PREDICTION FUNCTION
 # ==============================================================================
 
-#' Predict Mixed Memberships and Response for New Patients Given Learned Topics via Stan
+#' Predict Mixed Memberships and Response for New Observations Given Learned Topics via Stan
 #'
-#' @param gene_counts_test Matrix of gene counts
-#' @param W Learned topic-gene loadings \code{K, V}
+#' @param counts_test Matrix of counts
+#' @param W Learned topic-variable loadings \code{K, V}
 #' @param eta Learned regression coefficients \code{C, K}
 #' @param mu_target reciprocal of the rate parameter
 #' @param response Character vector of response categories
@@ -403,12 +405,14 @@ ClassTopics <- function(gene_counts,
 #'                    (default = \code{1000})
 #' @param iter_sampling number of sampling iterations for each chain
 #'                      (default = \code{1000})
-#' @param ... Additional arguments passed to `cmdstanr`'s `$sample()` method
+#' @param n_iter_EM Number of required EM iterations
+#' @param verbose logical that controls whether EM likelihood is printed
+#'                (default = \code{TRUE})
 #'
 #' @return List with predicted classes and probabilities
 #' @export
 predict_ClassTopics_stan <- function(
-    gene_counts_test,
+    counts_test,
     W,
     eta,
     mu_target,
@@ -420,9 +424,10 @@ predict_ClassTopics_stan <- function(
     seed = 123,
     iter_warmup = 1000,
     iter_sampling = 1000,
-    ...){
+    n_iter_EM = 4,
+    verbose = TRUE){
   
-  D <- nrow(gene_counts_test)
+  D <- nrow(counts_test)
   V <- ncol(W)
   K <- nrow(W)
   C <- nrow(eta)
@@ -446,17 +451,18 @@ predict_ClassTopics_stan <- function(
     return(.em_nmf(
       H = H0,
       W = W,
-      X = gene_counts_test,
+      X = counts_test,
       H_only = TRUE,
-      ...
-    ))
+      n_iter_EM = n_iter_EM,
+      verbose = verbose
+      ))
   })
   
   stan_data <- list(
     K = K,
     V = V,
     D = D,
-    gene_counts = gene_counts_test,
+    counts = counts_test,
     C = C,
     y = as.integer(response),
     shape = shape,
@@ -496,28 +502,28 @@ predict_ClassTopics_stan <- function(
 
 #' Predict Mixed Memberships and Response for New Patients Given Learned Topics via EM only
 #'
-#' @param gene_counts_test Matrix of gene counts
-#' @param W Learned topic-gene loadings \code{K, V}
+#' @param counts_test Matrix of counts
+#' @param W Learned topic-variable loadings \code{K, V}
 #' @param eta Learned regression coefficients \code{C, K}
 #' @param mu_target reciprocal of the rate parameter
 #' @param response Character vector of response categories
-#' @param n_iter_EM_test Number of required EM iterations
-#' @param ... Currently unused; reserved for future arguments (e.g. to be
-#'   forwarded to the internal EM routine).
+#' @param n_iter_EM Number of required EM iterations
+#' @param verbose logical that controls whether EM likelihood is printed
+#'                (default = \code{TRUE})
 #'
 #' @return List with predicted classes and probabilities
 #' @export
 predict_ClassTopics_EM <- function(
-    gene_counts_test,
+    counts_test,
     W,
     eta,
     mu_target,
     response,
-    n_iter_EM_test = 4,
-    ...
+    n_iter_EM = 4,
+    verbose = TRUE
   ){
   
-  D <- nrow(gene_counts_test)
+  D <- nrow(counts_test)
   V <- ncol(W)
   K <- nrow(W)
   C <- nrow(eta)
@@ -537,9 +543,10 @@ predict_ClassTopics_EM <- function(
   H <- .em_nmf(
     H = H0,
     W = W,
-    X = gene_counts_test,
-    n_iter_EM = n_iter_EM_test,
-    H_only = TRUE
+    X = counts_test,
+    n_iter_EM = n_iter_EM,
+    H_only = TRUE,
+    verbose = verbose
   )$H
   
   u <- rowSums(W)
@@ -573,7 +580,7 @@ predict_ClassTopics_EM <- function(
 
 # K-Fold Cross-Validation for ClassTopics (For unbiased estimation)
 #
-#' @param gene_counts gene count matrix
+#' @param counts count matrix
 #' @param response character or factor vector on the class labels
 #' @param folds list whose elements are train-test partitions
 #' @param fold index of the fold to be fitted a ClassTopics model
@@ -619,7 +626,7 @@ predict_ClassTopics_EM <- function(
 #' @keywords internal
 
 .cv_ClassTopics_fold_by_fold <- function(
-    gene_counts,
+    counts,
     response,
     folds,
     fold, 
@@ -642,7 +649,7 @@ predict_ClassTopics_EM <- function(
   
   response <- as.factor(response)
   
-  D <- nrow(gene_counts)
+  D <- nrow(counts)
   response_levels <- levels(response)
   C <- length(response_levels)
   
@@ -664,16 +671,16 @@ predict_ClassTopics_EM <- function(
                   length(train_indices), length(test_indices)))
     }
     
-    nonzero_train_cols <- (1:ncol(gene_counts[train_indices,]))[
-      colSums(gene_counts[train_indices,]) != 0]
+    nonzero_train_cols <- (1:ncol(counts[train_indices,]))[
+      colSums(counts[train_indices,]) != 0]
     
-    train_counts <- gene_counts[train_indices,
-                                nonzero_train_cols,
-                                drop = FALSE]
+    train_counts <- counts[train_indices,
+                           nonzero_train_cols,
+                           drop = FALSE]
 
       # Fit on training fold
       fit_fold <- ClassTopics(
-        gene_counts = train_counts,
+        counts = train_counts,
         response = response[train_indices],
         K = K_topics,
         sigma_eta = sigma_eta,
@@ -738,9 +745,9 @@ predict_ClassTopics_EM <- function(
     
     if(test_stan){
       test_pred <- predict_ClassTopics_stan(
-        gene_counts_test = gene_counts[test_indices,
-                                       nonzero_train_cols,
-                                       drop = FALSE],
+        counts_test = counts[test_indices,
+                             nonzero_train_cols,
+                             drop = FALSE],
         W = W_pred,
         eta = eta_fold,
         mu_target = mu_target,
@@ -748,20 +755,19 @@ predict_ClassTopics_EM <- function(
         seed = seed,
         iter_warmup = iter_warmup,
         iter_sampling = iter_sampling,
-        n_iter_EM = n_iter_EM,
-        ...
+        n_iter_EM = n_iter_EM_test
       )
     }
     else{
       test_pred <- predict_ClassTopics_EM(
-        gene_counts_test = gene_counts[test_indices,
-                                       nonzero_train_cols,
-                                       drop = FALSE],
+        counts_test = counts[test_indices,
+                             nonzero_train_cols,
+                             drop = FALSE],
         W = W_pred,
         eta = eta_fold,
         mu_target = mu_target,
         response = response[test_indices],
-        n_iter_EM_test = n_iter_EM_test
+        n_iter_EM = n_iter_EM_test
       )
     }
     
@@ -807,7 +813,7 @@ predict_ClassTopics_EM <- function(
 
 # K-Fold Cross-Validation for ClassTopics (For unbiased estimation)
 #
-#' @param gene_counts gene count matrix
+#' @param counts count matrix
 #' @param response character or factor vector on the class labels
 #' @param folds list whose elements are train-test partitions (as produced
 #'              by [.create_stratified_folds])
@@ -834,7 +840,7 @@ predict_ClassTopics_EM <- function(
 #' @keywords internal
 
 .cv_ClassTopics_overall <- function(
-    gene_counts,
+    counts,
     response,
     folds,
     pred_n_acc,
@@ -844,7 +850,7 @@ predict_ClassTopics_EM <- function(
   
   response <- as.factor(response)
   
-  D <- nrow(gene_counts)
+  D <- nrow(counts)
   response_levels <- levels(response)
   C <- length(response_levels)
   # Calculate overall metrics
@@ -920,7 +926,7 @@ predict_ClassTopics_EM <- function(
     cat("(This model is for interpretation; CV accuracy reported above)\n")
     
     final_model <- ClassTopics(
-      gene_counts = gene_counts,
+      counts = counts,
       response = response,
       ...
     )
@@ -1013,7 +1019,7 @@ predict_ClassTopics_EM <- function(
 
 # K-Fold Cross-Validation for ClassTopics (For unbiased estimation)
 #
-#' @param gene_counts gene count matrix
+#' @param counts count matrix
 #' @param response character or factor vector on the class labels
 #' @param k_folds number of folds to create for cross-validation (default = 5)
 #' @param K_topics number of topics to be modeled (default = 3)
@@ -1058,7 +1064,7 @@ predict_ClassTopics_EM <- function(
 #' @keywords internal
 
 .sequential_cv_ClassTopics <- function(
-    gene_counts,
+    counts,
     response,
     k_folds = 5,
     K_topics = 3,
@@ -1080,7 +1086,7 @@ predict_ClassTopics_EM <- function(
   
   response <- as.factor(response)
   
-  D <- nrow(gene_counts)
+  D <- nrow(counts)
   response_levels <- levels(response)
   C <- length(response_levels)
   
@@ -1111,16 +1117,16 @@ predict_ClassTopics_EM <- function(
                   length(train_indices), length(test_indices)))
     }
     
-    nonzero_train_cols <- (1:ncol(gene_counts[train_indices,]))[
-      colSums(gene_counts[train_indices,]) != 0]
+    nonzero_train_cols <- (1:ncol(counts[train_indices,]))[
+      colSums(counts[train_indices,]) != 0]
     
-    train_counts <- gene_counts[train_indices,
-                                nonzero_train_cols,
-                                drop = FALSE]
+    train_counts <- counts[train_indices,
+                           nonzero_train_cols,
+                           drop = FALSE]
   
     # Fit on training fold
     fit_fold <- ClassTopics(
-      gene_counts = train_counts,
+      counts = train_counts,
       response = response[train_indices],
       K = K_topics,
       sigma_eta = sigma_eta,
@@ -1179,9 +1185,9 @@ predict_ClassTopics_EM <- function(
     
     if(test_stan){
       test_pred <- predict_ClassTopics_stan(
-        gene_counts_test = gene_counts[test_indices,
-                                       nonzero_train_cols,
-                                       drop = FALSE],
+        counts_test = counts[test_indices,
+                             nonzero_train_cols,
+                             drop = FALSE],
         W = W_pred,
         eta = eta_fold,
         mu_target = mu_target,
@@ -1195,14 +1201,14 @@ predict_ClassTopics_EM <- function(
     }
     else{
       test_pred <- predict_ClassTopics_EM(
-        gene_counts_test = gene_counts[test_indices,
-                                       nonzero_train_cols,
-                                       drop = FALSE],
+        counts_test = counts[test_indices,
+                             nonzero_train_cols,
+                             drop = FALSE],
         W = W_pred,
         eta = eta_fold,
         mu_target = mu_target,
         response = response[test_indices],
-        n_iter_EM_test = n_iter_EM_test
+        n_iter_EM = n_iter_EM_test
       )
     }
     
@@ -1328,7 +1334,7 @@ predict_ClassTopics_EM <- function(
   cat("(This model is for interpretation; CV accuracy reported above)\n")
   
   final_model <- ClassTopics(
-    gene_counts = gene_counts,
+    counts = counts,
     response = response,
     K = K_topics,
     seed = seed,
@@ -1387,7 +1393,7 @@ predict_ClassTopics_EM <- function(
 #' fit on the full dataset -- as concurrent background jobs via the
 #' `future` package.
 #'
-#' @param gene_counts gene count matrix
+#' @param counts count matrix
 #' @param response character or factor vector on the class labels
 #' @param k_folds number of folds to create for cross-validation (default = 5)
 #' @param K_topics number of topics to be modeled (default = 3)
@@ -1434,7 +1440,7 @@ predict_ClassTopics_EM <- function(
 #'
 #' @export
 cv_ClassTopics <- function(
-    gene_counts,
+    counts,
     response,
     k_folds = 5,
     K_topics = 3,
@@ -1456,7 +1462,7 @@ cv_ClassTopics <- function(
   
   response <- as.factor(response)
   
-  D <- nrow(gene_counts)
+  D <- nrow(counts)
   response_levels <- levels(response)
   C <- length(response_levels)
   
@@ -1545,7 +1551,7 @@ cv_ClassTopics <- function(
     }, add = TRUE)
     
     ClassTopics(
-      gene_counts = gene_counts,
+      counts = counts,
       response = response,
       K = K_topics,
       seed = seed,
@@ -1581,7 +1587,7 @@ cv_ClassTopics <- function(
         }, add = TRUE)
         
         .cv_ClassTopics_fold_by_fold(
-          gene_counts = gene_counts,
+          counts = counts,
           response = response,
           folds = folds,
           fold = fold_local,
@@ -1644,7 +1650,7 @@ cv_ClassTopics <- function(
   # Summarize everything using the existing overall-results helper
   # ---------------------------------------------------------------------
   all_results <- .cv_ClassTopics_overall(
-    gene_counts = gene_counts,
+    counts = counts,
     response = response,
     folds = folds,
     pred_n_acc = pred_n_acc,
@@ -1663,14 +1669,14 @@ cv_ClassTopics <- function(
 #'
 #' @param fit Stan fit object from \code{ClassTopics}
 #' @param true_response Character or factor vector on the class labels
-#' @param gene_names Character vector of gene names (optional)
-#' @param top_genes Integer, number of top genes to extract per topic
+#' @param vars_names Character vector of variable names (optional)
+#' @param top_vars Integer, number of top variables to extract per topic
 #' @param credible_interval Numeric, credible interval width (default: \code{0.95})
 #'
 #' @return List containing all results and interpretations
 #' @export
 ClassTopics_results <- function(fit, true_response,
-                                 gene_names = NULL, top_genes = 10, 
+                                 vars_names = NULL, top_vars = 10, 
                                  credible_interval = 0.95){
   
   # Calculate posterior summaries
@@ -1685,8 +1691,8 @@ ClassTopics_results <- function(fit, true_response,
   V <- ncol(draws$beta)
   C <- length(response_levels)
   
-  if(is.null(gene_names)){
-    gene_names <- paste0("gene_", 1:V)
+  if(is.null(vars_names)){
+    vars_names <- paste0("var_", 1:V)
   }
   
   eta_means_mat <- matrix(colMeans(posterior::E(draws$eta)),
@@ -1701,8 +1707,8 @@ ClassTopics_results <- function(fit, true_response,
     nrow = D, ncol = K)
   
   theta <- CTparameter(mean = theta_mean,
-                        lower = theta_lower,
-                        upper = theta_upper)
+                       lower = theta_lower,
+                       upper = theta_upper)
   
   beta_mean <- posterior::E(draws$beta)
   beta_lower <- matrix(as.numeric(
@@ -1713,8 +1719,8 @@ ClassTopics_results <- function(fit, true_response,
     nrow = K, ncol = V)
   
   beta <- CTparameter(mean = beta_mean,
-                       lower = beta_lower,
-                       upper = beta_upper)
+                      lower = beta_lower,
+                      upper = beta_upper)
   
   # Regression coefficients
   eta_mean <- posterior::E(draws$eta) - eta_means_mat
@@ -1726,8 +1732,8 @@ ClassTopics_results <- function(fit, true_response,
     nrow = C, ncol = K) - eta_means_mat
   
   eta <- CTparameter(mean = eta_mean,
-                      lower = eta_lower,
-                      upper = eta_upper)
+                     lower = eta_lower,
+                     upper = eta_upper)
   
   y_pred_mode <- posterior::modal_category(draws$y_pred)
   
@@ -1744,12 +1750,12 @@ ClassTopics_results <- function(fit, true_response,
   # Extract topic correlations
   topic_cors <- posterior::E(draws$topic_correlations)
   
-  # Extract top genes for each topic
-  top_genes_list <- list()
+  # Extract top variables for each topic
+  top_vars_list <- list()
   for(k in 1:K){
-    top_indices <- order(beta_mean[k, ], decreasing = TRUE)[1:top_genes]
-    top_genes_list[[k]] <- data.frame(
-      gene = gene_names[top_indices],
+    top_indices <- order(beta_mean[k, ], decreasing = TRUE)[1:top_vars]
+    top_vars_list[[k]] <- data.frame(
+      var = vars_names[top_indices],
       probability_mean = beta_mean[k, top_indices],
       probability_lower = beta_lower[k, top_indices],
       probability_upper = beta_upper[k, top_indices],
@@ -1757,7 +1763,7 @@ ClassTopics_results <- function(fit, true_response,
       stringsAsFactors = FALSE
     )
   }
-  names(top_genes_list) <- paste0("Topic_", 1:K)
+  names(top_vars_list) <- paste0("Topic_", 1:K)
   
   # Format regression coefficients for interpretation
   if(C == 2){
@@ -1813,7 +1819,7 @@ ClassTopics_results <- function(fit, true_response,
     topic_correlations = topic_cors,
     
     # Interpretable summaries
-    top_genes = top_genes_list,
+    top_vars = top_vars_list,
     regression_coefficients = regression_results,
     
     # Predictions and accuracy
@@ -1821,7 +1827,7 @@ ClassTopics_results <- function(fit, true_response,
     
     # Metadata
     response_levels = response_levels,
-    gene_names = gene_names,
+    vars_names = vars_names,
     credible_interval = credible_interval,
     fit = fit
   )
@@ -1833,22 +1839,22 @@ ClassTopics_results <- function(fit, true_response,
 #'
 #' @param fit Stan fit object from cv_ClassTopics or .cv_ClassTopics_overall
 #' @param true_response Character or factor vector on the class labels
-#' @param gene_names Character vector of gene names (optional)
-#' @param top_genes Integer, number of top genes to extract per topic
+#' @param vars_names Character vector of variable names (optional)
+#' @param top_vars Integer, number of top variables to extract per topic
 #' @param credible_interval Numeric, credible interval width (default: \code{0.95})
 #'
 #' @return List containing all results and interpretations
 #' @export
 
 cv_ClassTopics_results <- function(fit, true_response,
-                                    gene_names = NULL, top_genes = 10, 
+                                    vars_names = NULL, top_vars = 10, 
                                     credible_interval = 0.95){
   
   final_model_results <- ClassTopics_results(
     fit = fit@final_model,
     true_response = true_response,
-    gene_names = gene_names,
-    top_genes = top_genes,
+    vars_names = vars_names,
+    top_vars = top_vars,
     credible_interval = credible_interval)
   
   cv_predictions <- cvCTprediction(
@@ -1877,11 +1883,11 @@ cv_ClassTopics_results <- function(fit, true_response,
     beta = final_model_results@beta,
     eta = final_model_results@eta,
     topic_correlations = final_model_results@topic_correlations,
-    top_genes = final_model_results@top_genes,
+    top_vars = final_model_results@top_vars,
     regression_coefficients = final_model_results@regression_coefficients,
     cv_predictions = cv_predictions,
     response_levels = final_model_results@response_levels,
-    gene_names = final_model_results@gene_names,
+    vars_names = final_model_results@vars_names,
     credible_interval = final_model_results@credible_interval,
     fit = fit@final_model
   )
@@ -1965,26 +1971,26 @@ plot_topic_response_heatmap <- function(results, significance_only = FALSE){
   return(p)
 }
 
-#' Plot Top Genes per Topic
+#' Plot Top Variables per Topic
 #'
 #' @param results Results from [ClassTopics_results()] or [cv_ClassTopics_results()]
-#' @param n_genes Integer, number of top genes to show per topic
+#' @param n_vars Integer, number of top vars to show per topic
 #'
-#' @return A \code{ggplot} object showing the top genes for each topic
+#' @return A \code{ggplot} object showing the top vars for each topic
 #' @importFrom ggplot2 aes
 #' @importFrom rlang .data
 #' @export
-plot_top_genes <- function(results, n_genes = 5){
+plot_top_vars <- function(results, n_vars = 5){
   
-  # Combine top genes data
-  top_genes_df <- do.call(rbind, lapply(names(results$top_genes), function(topic){
-    df <- results@top_genes[[topic]][1:n_genes, ]
+  # Combine top variables data
+  top_vars_df <- do.call(rbind, lapply(names(results@top_vars), function(topic){
+    df <- results@top_vars[[topic]][1:n_vars, ]
     df$Topic <- topic
     return(df)
   }))
   
-  p <- ggplot2::ggplot(top_genes_df,
-                       aes(x = tidytext::reorder_within(.data$gene, .data$probability_mean, .data$Topic),
+  p <- ggplot2::ggplot(top_vars_df,
+                       aes(x = tidytext::reorder_within(.data$var, .data$probability_mean, .data$Topic),
                            y = .data$probability_mean)) +
     ggplot2::geom_col(fill = "steelblue", alpha = 0.7) +
     ggplot2::geom_errorbar(aes(ymin = .data$probability_lower, ymax = .data$probability_upper),
@@ -1993,8 +1999,8 @@ plot_top_genes <- function(results, n_genes = 5){
     ggplot2::facet_wrap(~ Topic, scales = "free_y", ncol = 2) +
     tidytext::scale_x_reordered() +
     ggplot2::theme_minimal() +
-    ggplot2::labs(title = "Top Genes per Topic",
-                  x = "Genes", y = "Probability") +
+    ggplot2::labs(title = "Top Variables per Topic",
+                  x = "Variables", y = "Probability") +
     ggplot2::theme(strip.text = ggplot2::element_text(face = "bold"))
   
   return(p)

@@ -6,7 +6,7 @@
 categorical response variable}
 \usage{
 ClassTopics(
-  gene_counts,
+  counts,
   response,
   K = 6,
   sigma_eta = NULL,
@@ -26,7 +26,7 @@ ClassTopics(
 )
 }
 \arguments{
-\item{gene_counts}{gene count matrix}
+\item{counts}{count matrix}
 
 \item{response}{character or factor vector on the class labels}
 
@@ -79,15 +79,15 @@ Fits a supervised topic model using integrated LDA and NMF to data with
 categorical response variable
 }
 \details{
-\code{gene_counts} ~ Poisson(\code{lambda}), \code{lambda = H \%*\% W}    (NMF component)
+\code{counts} ~ Poisson(\code{lambda}), \code{lambda = H \%*\% W}    (NMF component)
 \code{response} ~ Categorical(softmax(\code{theta[i,] \%*\% eta}))  (supervised component)
 
 Parameters (matching Stan file names exactly):
-\code{H} : D x K  -- patient topic loadings
-\code{W} : K x V  -- topic gene profiles
+\code{H} : D x K  -- observation topic loadings
+\code{W} : K x V  -- topic-variable profiles
 
 Derived quantities (computed as transformed parameters in Stan,
 NOT passed as initial values):
-\code{theta} : D x K  -- topic proportions per patient
-\code{beta}  : K x V  -- gene distributions per topic
+\code{theta} : D x K  -- topic proportions per observation
+\code{beta}  : K x V  -- variable distributions per topic
 }

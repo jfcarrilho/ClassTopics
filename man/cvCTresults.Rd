@@ -10,11 +10,11 @@ cvCTresults(
   beta,
   eta,
   topic_correlations,
-  top_genes,
+  top_vars,
   regression_coefficients,
   cv_predictions,
   response_levels,
-  gene_names,
+  vars_names,
   credible_interval,
   fit
 )
@@ -22,15 +22,15 @@ cvCTresults(
 \arguments{
 \item{folds}{List of numeric vectors, test folds created}
 
-\item{theta}{An \code{CTparameter} object.}
+\item{theta}{A \code{CTparameter} object.}
 
-\item{beta}{An \code{CTparameter} object.}
+\item{beta}{A \code{CTparameter} object.}
 
-\item{eta}{An \code{CTparameter} object.}
+\item{eta}{A \code{CTparameter} object.}
 
 \item{topic_correlations}{Numeric matrix of topic correlations.}
 
-\item{top_genes}{A named list of \code{data.frame}s, one per topic.}
+\item{top_vars}{A named list of \code{data.frame}s, one per topic.}
 
 \item{regression_coefficients}{A \code{data.frame} summary of \code{eta}
 melted by (category, topic) pairs.}
@@ -39,7 +39,7 @@ melted by (category, topic) pairs.}
 
 \item{response_levels}{Character vector of category labels.}
 
-\item{gene_names}{Character vector of gene names.}
+\item{vars_names}{Character vector of variable names.}
 
 \item{credible_interval}{Numeric scalar, credible interval width.}
 

@@ -5,7 +5,7 @@
 \title{K-Fold Cross-Validation for ClassTopics Models (Parallel)}
 \usage{
 cv_ClassTopics(
-  gene_counts,
+  counts,
   response,
   k_folds = 5,
   K_topics = 3,
@@ -25,7 +25,7 @@ cv_ClassTopics(
 )
 }
 \arguments{
-\item{gene_counts}{gene count matrix}
+\item{counts}{count matrix}
 
 \item{response}{character or factor vector on the class labels}
 

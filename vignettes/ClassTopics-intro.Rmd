@@ -1,0 +1,265 @@
+---
+title: "Introduction to ClassTopics"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introduction to ClassTopics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE  # Stan fitting requires a working cmdstan installation;
+                # code is shown but not executed when this vignette is built.
+)
+```
+
+## Overview
+
+`ClassTopics` fits a **supervised topic model** to count data (for example,
+gene expression counts) together with a binary or categorical response. It
+combines two components, estimated jointly:
+
+1. A topic model that integrates non-negative matrix factorization (NMF)
+   and latent Dirichlet allocation (LDA) to factor the count matrix into
+   patient-level topic proportions (`theta`) and topic-level variable
+   profiles (`beta`).
+2. A multinomial/categorical regression of the response on those topic
+   proportions (coefficients `eta`), fit at the same time as the topics
+   themselves, so the discovered topics are shaped by their ability to
+   predict the outcome.
+
+Estimation is done with full Bayesian inference in
+[Stan](https://mc-stan.org/), via
+[`cmdstanr`](https://mc-stan.org/cmdstanr/). An EM warm-start initializes
+the sampler for faster, more stable convergence.
+
+This vignette walks through:
+
+- fitting a model with `ClassTopics()`
+- interpreting the result with `ClassTopics_results()`
+- diagnostic plots
+- cross-validation with `cv_ClassTopics()`
+- predicting on new samples
+
+## Setup
+
+```{r setup}
+library(ClassTopics)
+```
+
+`ClassTopics` requires a working `cmdstanr` installation. If you haven't
+set this up yet:
+
+```{r cmdstan-setup}
+install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
+cmdstanr::install_cmdstan()
+```
+
+This is a one-time setup per machine. The Stan models bundled with
+`ClassTopics` are compiled automatically the first time you call a fitting
+function, and the compiled executables are cached and reused afterwards.
+
+## Simulating example data
+
+To keep this vignette self-contained, we simulate a small gene-count
+dataset with a categorical response driven by three latent topics.
+
+```{r simulate-data}
+set.seed(123)
+
+D <- 120   # number of patients
+V <- 60    # number of genes
+K <- 6     # true number of topics
+C <- 3     # number of response categories
+
+# Simulate topic-gene profiles (beta) and patient topic proportions (theta)
+true_beta  <- matrix(rgamma(K * V, shape = 2, rate = 2), nrow = K, ncol = V)
+true_theta <- matrix(rgamma(D * K, shape = 2, rate = 2), nrow = D, ncol = K)
+true_theta <- true_theta / rowSums(true_theta)
+
+# Simulate gene counts: Poisson NMF
+lambda <- true_theta %*% true_beta * 200
+gene_counts <- matrix(
+  rpois(D * V, lambda = as.vector(lambda)),
+  nrow = D, ncol = V
+)
+colnames(gene_counts) <- paste0("gene_", seq_len(V))
+
+# Simulate a response driven by the topic proportions
+true_eta <- matrix(rnorm(C * K, sd = 2), nrow = C, ncol = K)
+linear_pred <- true_theta %*% t(true_eta)
+probs <- exp(linear_pred) / rowSums(exp(linear_pred))
+response <- factor(
+  apply(probs, 1, function(p) sample(seq_len(C), size = 1, prob = p)),
+  labels = c("A", "B", "C")
+)
+
+table(response)
+```
+
+## Fitting a model
+
+```{r fit}
+fit <- ClassTopics(
+  counts        = gene_counts,
+  response      = response,
+  K             = 3,
+  betadir       = TRUE,
+  seed          = 123,
+  chains        = 3,
+  cores         = 3,
+  iter_warmup   = 1000,
+  iter_sampling = 1000
+)
+```
+
+`ClassTopics()` returns a compiled and fitted `cmdstanr` `CmdStanMCMC`
+object. Use `ClassTopics_results()` to turn this into an interpretable,
+structured `CTresults` object.
+
+## Interpreting the results
+
+```{r results}
+results <- ClassTopics_results(
+  fit               = fit,
+  true_response     = response,
+  vars_names        = colnames(gene_counts),
+  top_vars          = 10,
+  credible_interval = 0.95
+)
+
+results
+```
+
+`results` is an S4 `CTresults` object. You can pull out specific pieces
+with its accessors:
+
+```{r accessors}
+getPredictions(results)          # predicted class + probabilities
+regressionCoefficients(results)  # eta estimates, with credible intervals
+topVars(results)                # top genes per topic
+```
+
+## Diagnostic plots
+
+```{r plots}
+plot_topic_correlations(results)
+plot_topic_response_heatmap(results)
+plot_top_vars(results, n_vars = 5)
+```
+
+`plot_topic_correlations()` shows how correlated the estimated topics are
+with one another -- useful for spotting redundant topics.
+`plot_topic_response_heatmap()` shows which topics are most strongly
+associated with which response categories. `plot_top_vars()` shows the
+highest-probability vars driving each topic.
+
+## Cross-validation
+
+A single fit's in-sample accuracy will overstate real-world performance.
+`cv_ClassTopics()` runs stratified k-fold cross-validation, fitting one
+model per fold (plus one final model on the full data), in parallel via
+the `future` package:
+
+```{r cv}
+cv_fit <- cv_ClassTopics(
+  counts        = gene_counts,
+  response      = response,
+  k_folds       = 5,
+  K_topics      = 3,
+  betadir       = TRUE,
+  seed          = 123,
+  iter_warmup   = 1000,
+  iter_sampling = 1000
+)
+
+cv_fit
+```
+
+`cv_ClassTopics()` fits one model per fold plus one final model on the
+full dataset (run concurrently via the `future` package), and returns a
+`cvCTprediction_plusfm` object with the pooled cross-validated diagnostics
+and the final full-data fit. Key accessors:
+
+```{r cv-accessors}
+cvTestAccuracy(cv_fit)   # pooled out-of-fold test accuracy
+overfittingGap(cv_fit)   # train accuracy - test accuracy
+```
+
+A large overfitting gap suggests the model (or `K_topics`, or `sigma_eta`)
+may need adjusting -- for example, increasing `sigma_eta` or `lambda_ridge`
+to regularize `eta` more strongly.
+
+The final model, fit on the complete dataset, is available via
+`cv_fit@final_model` -- this is the same kind of `cmdstanr` fit object
+returned by `ClassTopics()`, and can be summarized the same way:
+
+```{r cv-final-model}
+cv_results <- ClassTopics_results(
+  fit = cv_fit@final_model,
+  true_response = response,
+  vars_names = colnames(gene_counts)
+)
+```
+
+## Predicting on new patients
+
+Given a fitted model's learned topic-variable profiles (`beta`) and regression
+coefficients (`eta`), you can predict the response for new observations from
+their counts alone, without knowing their true response.
+
+Two prediction routes are available:
+
+- `predict_ClassTopics_stan()`: refits topic proportions for the new
+  patients via Stan, fully Bayesian (matches how the original model was fit).
+- `predict_ClassTopics_EM()`: a faster, EM-only approximation, useful when
+  Stan's overhead isn't justified (e.g. very large test sets, or quick
+  exploratory checks).
+
+```{r predict-stan}
+# results@beta and results@eta are CTparameter objects (posterior mean +
+# credible interval); extract the plain posterior-mean matrices with
+# paramMean() for use as plug-in estimates in prediction.
+W   <- paramMean(results@beta)
+eta <- paramMean(results@eta)
+
+test_pred <- predict_ClassTopics_stan(
+  counts_test = gene_counts_new,  # a D_test x V matrix, same variables/order
+  W = W,
+  eta = eta,
+  mu_target = sqrt(mean(gene_counts) / nrow(W)),
+  response = response,   # original training response factor (its levels
+                         # define the prediction categories)
+  seed = 123
+)
+
+test_pred$predicted_class
+test_pred$predicted_probs
+```
+
+```{r predict-em}
+test_pred_em <- predict_ClassTopics_EM(
+  counts_test = gene_counts_new,
+  W = W,
+  eta = eta,
+  mu_target = sqrt(mean(gene_counts) / nrow(W)),
+  response = response
+)
+
+test_pred_em$predicted_class
+```
+
+## Summary
+
+- `ClassTopics()` fits the joint NMF + supervised topic model via Stan.
+- `ClassTopics_results()` turns a raw fit into an interpretable `CTresults`
+  object, with accessors for predictions, coefficients, and top variables.
+- `plot_topic_correlations()`, `plot_topic_response_heatmap()`, and
+  `plot_top_vars()` provide diagnostic visualizations.
+- `cv_ClassTopics()` provides an honest, cross-validated estimate of
+  predictive performance and an overfitting diagnostic.
+- `predict_ClassTopics_stan()` / `predict_ClassTopics_EM()` predict the
+  response for new, unlabeled samples from a fitted model.

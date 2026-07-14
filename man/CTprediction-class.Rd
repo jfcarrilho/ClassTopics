@@ -28,7 +28,7 @@ predictedProbs(x)
 \description{
 An S4 class representing the output of \code{\link{predict_ClassTopics_stan}}:
 predicted class labels and predicted class probabilities for new
-(out-of-sample) observations, given a fitted model's topic-gene loadings
+(out-of-sample) observations, given a fitted model's topic-variable loadings
 and regression coefficients.
 }
 \section{Slots}{
