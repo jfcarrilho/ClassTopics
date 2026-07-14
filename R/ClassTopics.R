@@ -610,6 +610,9 @@ predict_ClassTopics_EM <- function(
 #' @param lambda_ridge numeric ridge-penalty weight applied to the
 #'                     regression coefficients \code{eta} (default = \code{0},
 #'                     i.e. no ridge penalty)
+#' @param cores number of CPU cores to use (default = \code{3})
+#' @param chains number of chains to run (default = \code{3})
+#' @param control control parameters for the Stan algorithm
 #' @param ... Additional arguments passed to [ClassTopics()] and [predict_ClassTopics_stan()]
 #'
 #' @return List with accuracy estimates and predictions for one of the folds
@@ -643,7 +646,13 @@ predict_ClassTopics_EM <- function(
     test_stan = TRUE,
     lambda_cat = 10000,
     lambda_ridge = 0,
+    chains = 3,
+    cores = 3,
+    control = list(adapt_delta = 0.90,
+                   max_treedepth = 15),
     ...){
+  
+  cat("Worker PID:", Sys.getpid(), "\n")
   
   set.seed(seed)
   
@@ -693,6 +702,9 @@ predict_ClassTopics_EM <- function(
         n_iter_EM = n_iter_EM,
         lambda_cat = lambda_cat,
         lambda_ridge = lambda_ridge,
+        chains = chains,
+        cores = cores,
+        control = control,
         ...
       )
     
@@ -755,7 +767,10 @@ predict_ClassTopics_EM <- function(
         seed = seed,
         iter_warmup = iter_warmup,
         iter_sampling = iter_sampling,
-        n_iter_EM = n_iter_EM_test
+        n_iter_EM = n_iter_EM_test,
+        chains = chains,
+        cores = cores,
+        control = control
       )
     }
     else{
@@ -822,6 +837,10 @@ predict_ClassTopics_EM <- function(
 #' @param final_model argument that may receive the estimated full model
 #'                    obtained with ClassTopics. If \code{NULL} (default), said model is
 #'                    fitted internally
+#' @param cores number of CPU cores (default = \code{3})
+#' @param chains number of chains to run (default = \code{3})
+#' @param seed numeric seed for reproducibility (default = \code{123})
+#' @param control control parameters for the Stan algorithm
 #' @param ... Additional arguments passed to ClassTopics and predict_ClassTopics
 #'            (both _stan and _EM)
 #'
@@ -845,6 +864,11 @@ predict_ClassTopics_EM <- function(
     folds,
     pred_n_acc,
     final_model = NULL,
+    chains = 3,
+    cores = 3,
+    seed = 123,
+    control = list(adapt_delta = 0.90,
+                   max_treedepth = 15),
     ...){
   
   
@@ -928,6 +952,10 @@ predict_ClassTopics_EM <- function(
     final_model <- ClassTopics(
       counts = counts,
       response = response,
+      chains = chains,
+      cores = cores,
+      control = control,
+      seed = seed,
       ...
     )
   }
@@ -1421,6 +1449,9 @@ predict_ClassTopics_EM <- function(
 #' @param lambda_ridge numeric ridge-penalty weight applied to the
 #'                     regression coefficients `eta` (default = 0, i.e. no
 #'                     ridge penalty)
+#' @param cores number of CPU cores to use per fold and within the final model (default = \code{3})
+#' @param chains number of chains to run per fold and within the final model (default = \code{3})
+#' @param control control parameters for the Stan algorithm
 #' @param ... Additional arguments passed to [ClassTopics()] and
 #'   [predict_ClassTopics_stan()] / [predict_ClassTopics_EM()]
 #'
@@ -1456,6 +1487,10 @@ cv_ClassTopics <- function(
     test_stan = TRUE,
     lambda_cat = 1,
     lambda_ridge = 0,
+    chains = 3,
+    cores = 3,
+    control = list(adapt_delta = 0.90,
+                   max_treedepth = 15),
     ...){
   
   set.seed(seed)
@@ -1562,6 +1597,9 @@ cv_ClassTopics <- function(
       iter_sampling = iter_sampling,
       n_iter_EM = n_iter_EM,
       lambda_cat = lambda_cat,
+      chains = chains,
+      cores = cores,
+      control = control,
       ...
     )
   }, seed = TRUE)
@@ -1604,6 +1642,9 @@ cv_ClassTopics <- function(
           test_stan = test_stan,
           lambda_cat = lambda_cat,
           lambda_ridge = lambda_ridge,
+          chains = chains,
+          cores = cores,
+          control = control,
           ...
         )
       }, seed = TRUE)

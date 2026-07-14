@@ -21,6 +21,9 @@ cv_ClassTopics(
   test_stan = TRUE,
   lambda_cat = 1,
   lambda_ridge = 0,
+  chains = 3,
+  cores = 3,
+  control = list(adapt_delta = 0.9, max_treedepth = 15),
   ...
 )
 }
@@ -68,6 +71,12 @@ component in model estimation (default = 1)}
 \item{lambda_ridge}{numeric ridge-penalty weight applied to the
 regression coefficients \code{eta} (default = 0, i.e. no
 ridge penalty)}
+
+\item{chains}{number of chains to run per fold and within the final model (default = \code{3})}
+
+\item{cores}{number of CPU cores to use per fold and within the final model (default = \code{3})}
+
+\item{control}{control parameters for the Stan algorithm}
 
 \item{...}{Additional arguments passed to \code{\link[=ClassTopics]{ClassTopics()}} and
 \code{\link[=predict_ClassTopics_stan]{predict_ClassTopics_stan()}} / \code{\link[=predict_ClassTopics_EM]{predict_ClassTopics_EM()}}}
