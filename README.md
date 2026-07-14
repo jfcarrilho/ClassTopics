@@ -1,4 +1,4 @@
-# ClassTopics
+# ClassTopics: Supervised Topic Models for Binary or Categorical Response Prediction via Stan
 
 <!-- badges: start -->
 <!-- [![R-CMD-check](https://github.com/jfcarrilho/ClassTopics/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/jfcarrilho/ClassTopics/actions/workflows/R-CMD-check.yaml) -->
