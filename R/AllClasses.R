@@ -41,29 +41,29 @@
 #' @rdname CTparameter-class
 #' @exportClass CTparameter
 setClass("CTparameter",
-  representation(
-    mean  = "matrix",
-    lower = "matrix",
-    upper = "matrix"
-  )
+         representation(
+           mean  = "matrix",
+           lower = "matrix",
+           upper = "matrix"
+         )
 )
 
 setValidity("CTparameter", function(object) {
   errs <- character()
-
+  
   dims <- list(mean = dim(object@mean),
                lower = dim(object@lower),
                upper = dim(object@upper))
-
+  
   if (!identical(dims$mean, dims$lower) || !identical(dims$mean, dims$upper)) {
     errs <- c(errs, "'mean', 'lower', and 'upper' must have identical dimensions")
   }
-
+  
   if (length(errs) == 0 &&
       any(object@lower > object@upper, na.rm = TRUE)) {
     errs <- c(errs, "'lower' bound exceeds 'upper' bound for at least one element")
   }
-
+  
   if (length(errs) == 0) TRUE else errs
 })
 
@@ -166,8 +166,8 @@ setValidity("CTtrainpred", function(object) {
 #' @return An object of class \code{CTtrainpred}.
 #' @export
 CTtrainpred <- function(predicted_categories, true_categories,
-                         prediction_probabilities, overall_accuracy,
-                         category_accuracy, confusion_matrix){
+                        prediction_probabilities, overall_accuracy,
+                        category_accuracy, confusion_matrix){
   new("CTtrainpred",
       predicted_categories     = predicted_categories,
       true_categories          = true_categories,
@@ -186,7 +186,7 @@ CTtrainpred <- function(predicted_categories, true_categories,
 #'
 #' An S4 class representing the output of \code{\link{predict_ClassTopics_stan}}:
 #' predicted class labels and predicted class probabilities for new
-#' (out-of-sample) observations, given a fitted model's topic-variable loadings
+#' (out-of-sample) observations, given a fitted model's topic-gene loadings
 #' and regression coefficients.
 #'
 #' @slot predicted_class Character vector of predicted category labels
@@ -198,20 +198,20 @@ CTtrainpred <- function(predicted_categories, true_categories,
 #' @rdname CTprediction-class
 #' @exportClass CTprediction
 setClass("CTprediction",
-  representation(
-    predicted_class = "character",
-    predicted_probs  = "matrix"
-  )
+         representation(
+           predicted_class = "character",
+           predicted_probs  = "matrix"
+         )
 )
 
 setValidity("CTprediction", function(object) {
   errs <- character()
-
+  
   if (length(object@predicted_class) != nrow(object@predicted_probs)) {
     errs <- c(errs,
-      "length of 'predicted_class' must equal the number of rows of 'predicted_probs'")
+              "length of 'predicted_class' must equal the number of rows of 'predicted_probs'")
   }
-
+  
   if (length(errs) == 0) TRUE else errs
 })
 
@@ -390,22 +390,22 @@ setValidity("cvCTprediction", function(object) {
 #' @return An object of class \code{cvCTprediction}.
 #' @export
 cvCTprediction <- function(cv_train_accuracy_mean,
-                            cv_train_accuracy_sd,
-                            fold_train_accuracies,
-                            cv_test_accuracy,
-                            cv_test_accuracy_mean,
-                            cv_test_accuracy_sd,
-                            fold_test_accuracies,
-                            cv_test_confusion_matrix,
-                            cv_train_class_accuracy_mean,
-                            cv_train_class_accuracy_sd,
-                            fold_train_class_accuracies,
-                            cv_test_class_accuracy_mean,
-                            cv_test_class_accuracy_sd,
-                            fold_test_class_accuracies,
-                            overfitting_gap,
-                            all_test_predictions,
-                            all_test_pred_probs){
+                           cv_train_accuracy_sd,
+                           fold_train_accuracies,
+                           cv_test_accuracy,
+                           cv_test_accuracy_mean,
+                           cv_test_accuracy_sd,
+                           fold_test_accuracies,
+                           cv_test_confusion_matrix,
+                           cv_train_class_accuracy_mean,
+                           cv_train_class_accuracy_sd,
+                           fold_train_class_accuracies,
+                           cv_test_class_accuracy_mean,
+                           cv_test_class_accuracy_sd,
+                           fold_test_class_accuracies,
+                           overfitting_gap,
+                           all_test_predictions,
+                           all_test_pred_probs){
   new("cvCTprediction",
       cv_train_accuracy_mean       = cv_train_accuracy_mean,
       cv_train_accuracy_sd         = cv_train_accuracy_sd,
@@ -508,59 +508,59 @@ setMethod("show", "cvCTprediction", function(object) {
 #' @rdname cvCTprediction_plusfm-class
 #' @exportClass cvCTprediction_plusfm
 setClass("cvCTprediction_plusfm",
-  representation(
-    folds                        = "list", 
-    cv_train_accuracy_mean       = "numeric",
-    cv_train_accuracy_sd         = "numeric",
-    fold_train_accuracies        = "numeric",
-
-    cv_test_accuracy             = "numeric",
-    cv_test_accuracy_mean        = "numeric",
-    cv_test_accuracy_sd          = "numeric",
-    fold_test_accuracies         = "numeric",
-    cv_test_confusion_matrix     = "table",
-
-    cv_train_class_accuracy_mean = "numeric",
-    cv_train_class_accuracy_sd   = "numeric",
-    fold_train_class_accuracies  = "matrix",
-
-    cv_test_class_accuracy_mean  = "numeric",
-    cv_test_class_accuracy_sd    = "numeric",
-    fold_test_class_accuracies   = "matrix",
-
-    overfitting_gap              = "numeric",
-
-    all_test_predictions         = "factor",
-    all_test_pred_probs          = "matrix",
-    
-    final_model                  = "ANY"
-  )
+         representation(
+           folds                        = "list", 
+           cv_train_accuracy_mean       = "numeric",
+           cv_train_accuracy_sd         = "numeric",
+           fold_train_accuracies        = "numeric",
+           
+           cv_test_accuracy             = "numeric",
+           cv_test_accuracy_mean        = "numeric",
+           cv_test_accuracy_sd          = "numeric",
+           fold_test_accuracies         = "numeric",
+           cv_test_confusion_matrix     = "table",
+           
+           cv_train_class_accuracy_mean = "numeric",
+           cv_train_class_accuracy_sd   = "numeric",
+           fold_train_class_accuracies  = "matrix",
+           
+           cv_test_class_accuracy_mean  = "numeric",
+           cv_test_class_accuracy_sd    = "numeric",
+           fold_test_class_accuracies   = "matrix",
+           
+           overfitting_gap              = "numeric",
+           
+           all_test_predictions         = "factor",
+           all_test_pred_probs          = "matrix",
+           
+           final_model                  = "ANY"
+         )
 )
 
 setValidity("cvCTprediction_plusfm", function(object) {
   errs <- character()
-
+  
   if (length(object@cv_train_accuracy_mean) != 1 ||
       object@cv_train_accuracy_mean < 0 || object@cv_train_accuracy_mean > 1) {
     errs <- c(errs, "'cv_train_accuracy_mean' must be a single value in [0, 1]")
   }
-
+  
   if (length(object@cv_test_accuracy) != 1 ||
       object@cv_test_accuracy < 0 || object@cv_test_accuracy > 1) {
     errs <- c(errs, "'cv_test_accuracy' must be a single value in [0, 1]")
   }
-
+  
   if (length(object@all_test_predictions) != nrow(object@all_test_pred_probs)) {
     errs <- c(errs,
-      "length of 'all_test_predictions' must equal the number of rows of 'all_test_pred_probs'")
+              "length of 'all_test_predictions' must equal the number of rows of 'all_test_pred_probs'")
   }
-
+  
   if (nrow(object@fold_train_class_accuracies) != length(object@fold_train_accuracies) ||
       nrow(object@fold_test_class_accuracies) != length(object@fold_test_accuracies)) {
     errs <- c(errs,
-      "number of folds implied by 'fold_train_class_accuracies'/'fold_test_class_accuracies' must match 'fold_train_accuracies'/'fold_test_accuracies'")
+              "number of folds implied by 'fold_train_class_accuracies'/'fold_test_class_accuracies' must match 'fold_train_accuracies'/'fold_test_accuracies'")
   }
-
+  
   if (length(errs) == 0) TRUE else errs
 })
 
@@ -600,24 +600,24 @@ setValidity("cvCTprediction_plusfm", function(object) {
 #' @return An object of class \code{cvCTprediction_plusfm}.
 #' @export
 cvCTprediction_plusfm <- function(folds,
-                            cv_train_accuracy_mean,
-                            cv_train_accuracy_sd,
-                            fold_train_accuracies,
-                            cv_test_accuracy,
-                            cv_test_accuracy_mean,
-                            cv_test_accuracy_sd,
-                            fold_test_accuracies,
-                            cv_test_confusion_matrix,
-                            cv_train_class_accuracy_mean,
-                            cv_train_class_accuracy_sd,
-                            fold_train_class_accuracies,
-                            cv_test_class_accuracy_mean,
-                            cv_test_class_accuracy_sd,
-                            fold_test_class_accuracies,
-                            overfitting_gap,
-                            all_test_predictions,
-                            all_test_pred_probs,
-                            final_model){
+                                  cv_train_accuracy_mean,
+                                  cv_train_accuracy_sd,
+                                  fold_train_accuracies,
+                                  cv_test_accuracy,
+                                  cv_test_accuracy_mean,
+                                  cv_test_accuracy_sd,
+                                  fold_test_accuracies,
+                                  cv_test_confusion_matrix,
+                                  cv_train_class_accuracy_mean,
+                                  cv_train_class_accuracy_sd,
+                                  fold_train_class_accuracies,
+                                  cv_test_class_accuracy_mean,
+                                  cv_test_class_accuracy_sd,
+                                  fold_test_class_accuracies,
+                                  overfitting_gap,
+                                  all_test_predictions,
+                                  all_test_pred_probs,
+                                  final_model){
   new("cvCTprediction_plusfm",
       folds                        = folds,
       cv_train_accuracy_mean       = cv_train_accuracy_mean,
@@ -673,24 +673,24 @@ setMethod("show", "cvCTprediction_plusfm", function(object) {
 #' Top-level S4 class summarizing the output of
 #' \code{\link{ClassTopics_results}}. It bundles parameter estimates
 #' (theta, beta, eta), topic correlations, interpretable summaries (top
-#' variables, regression coefficients), in-sample prediction results, and
+#' genes, regression coefficients), in-sample prediction results, and
 #' metadata, alongside the raw cmdStan fit object from which these
 #' summaries were derived.
 #'
-#' @slot theta A \code{CTparameter} object: document-topic proportions.
-#' @slot beta A \code{CTparameter} object: topic-variable loadings.
-#' @slot eta A \code{CTparameter} object: topic-category regression
+#' @slot theta An \code{CTparameter} object: document-topic proportions.
+#' @slot beta An \code{CTparameter} object: topic-gene loadings.
+#' @slot eta An \code{CTparameter} object: topic-category regression
 #'   parameters.
 #' @slot topic_correlations Numeric matrix of correlations between topics.
-#' @slot top_vars A named list of \code{data.frame}s, one per topic, each
-#'   giving the top variables and their loading estimates (mean/lower/upper).
+#' @slot top_genes A named list of \code{data.frame}s, one per topic, each
+#'   giving the top genes and their loading estimates (mean/lower/upper).
 #' @slot regression_coefficients A \code{data.frame} summary of \code{eta},
 #'   melted by (category, topic) pairs, with columns for the posterior mean
 #'   and credible interval bounds.
 #' @slot predictions An \code{CTprediction} object: in-sample predictions
 #'   made by the fitted model.
 #' @slot response_levels Character vector of category labels.
-#' @slot vars_names Character vector of variable names.
+#' @slot gene_names Character vector of gene names.
 #' @slot credible_interval Numeric scalar giving the credible interval
 #'   width used (e.g. \code{0.95}).
 #' @slot fit The raw fitted model object returned by cmdStan (e.g. a
@@ -700,78 +700,78 @@ setMethod("show", "cvCTprediction_plusfm", function(object) {
 #' @rdname CTresults-class
 #' @exportClass CTresults
 setClass("CTresults",
-  representation(
-    theta                   = "CTparameter",
-    beta                    = "CTparameter",
-    eta                     = "CTparameter",
-    topic_correlations      = "matrix",
-    top_vars                = "list",
-    regression_coefficients = "data.frame",
-    predictions             = "CTprediction",
-    response_levels         = "character",
-    vars_names              = "character",
-    credible_interval       = "numeric",
-    fit                     = "ANY"
-  )
+         representation(
+           theta                   = "CTparameter",
+           beta                    = "CTparameter",
+           eta                     = "CTparameter",
+           topic_correlations      = "matrix",
+           top_genes               = "list",
+           regression_coefficients = "data.frame",
+           predictions             = "CTprediction",
+           response_levels         = "character",
+           gene_names              = "character",
+           credible_interval       = "numeric",
+           fit                     = "ANY"
+         )
 )
 
 setValidity("CTresults", function(object) {
   errs <- character()
-
+  
   if (length(object@credible_interval) != 1 ||
       object@credible_interval <= 0 || object@credible_interval >= 1) {
     errs <- c(errs, "'credible_interval' must be a single value in (0, 1)")
   }
-
+  
   expected_reg_cols <- c("Category", "Topic", "Coefficient_Mean",
-                          "Coefficient_Lower", "Coefficient_Upper")
+                         "Coefficient_Lower", "Coefficient_Upper")
   if (!all(expected_reg_cols %in% colnames(object@regression_coefficients))) {
     errs <- c(errs,
-      paste0("'regression_coefficients' must contain columns: ",
-             paste(expected_reg_cols, collapse = ", ")))
+              paste0("'regression_coefficients' must contain columns: ",
+                     paste(expected_reg_cols, collapse = ", ")))
   }
-
+  
   if (length(errs) == 0) TRUE else errs
 })
 
 #' Constructor for CTresults
 #'
-#' @param theta A \code{CTparameter} object.
-#' @param beta A \code{CTparameter} object.
-#' @param eta A \code{CTparameter} object.
+#' @param theta An \code{CTparameter} object.
+#' @param beta An \code{CTparameter} object.
+#' @param eta An \code{CTparameter} object.
 #' @param topic_correlations Numeric matrix of topic correlations.
-#' @param top_vars A named list of \code{data.frame}s, one per topic.
+#' @param top_genes A named list of \code{data.frame}s, one per topic.
 #' @param regression_coefficients A \code{data.frame} summary of \code{eta}
 #'   melted by (category, topic) pairs.
 #' @param predictions An \code{CTprediction} object.
 #' @param response_levels Character vector of category labels.
-#' @param vars_names Character vector of variable names.
+#' @param gene_names Character vector of gene names.
 #' @param credible_interval Numeric scalar, credible interval width.
 #' @param fit The raw fitted model object from cmdStan.
 #'
 #' @return An object of class \code{CTresults}.
 #' @export
 CTresults <- function(theta,
-                       beta,
-                       eta,
-                       topic_correlations,
-                       top_vars,
-                       regression_coefficients,
-                       predictions,
-                       response_levels,
-                       vars_names,
-                       credible_interval,
-                       fit) {
+                      beta,
+                      eta,
+                      topic_correlations,
+                      top_genes,
+                      regression_coefficients,
+                      predictions,
+                      response_levels,
+                      gene_names,
+                      credible_interval,
+                      fit) {
   new("CTresults",
       theta                   = theta,
       beta                    = beta,
       eta                     = eta,
       topic_correlations      = topic_correlations,
-      top_vars                = top_vars,
+      top_genes               = top_genes,
       regression_coefficients = regression_coefficients,
       predictions             = predictions,
       response_levels         = response_levels,
-      vars_names              = vars_names,
+      gene_names              = gene_names,
       credible_interval       = credible_interval,
       fit                     = fit)
 }
@@ -790,11 +790,11 @@ setMethod("getPredictions", "CTresults", function(x) x@predictions)
 
 #' @rdname CTresults-class
 #' @export
-setGeneric("topVars", function(x, ...) standardGeneric("topVars"))
+setGeneric("topGenes", function(x, ...) standardGeneric("topGenes"))
 
 #' @rdname CTresults-class
 #' @export
-setMethod("topVars", "CTresults", function(x, ...) x@top_vars)
+setMethod("topGenes", "CTresults", function(x, ...) x@top_genes)
 
 #' @rdname CTresults-class
 #' @export
@@ -818,7 +818,7 @@ setMethod("show", "CTresults", function(object) {
   cat("CTresults object (ClassTopics)\n")
   cat("  Topics:           ", ncol(object@theta@mean), "\n")
   cat("  Documents:        ", nrow(object@theta@mean), "\n")
-  cat("  Variables:        ", length(object@vars_names), "\n")
+  cat("  Genes:            ", length(object@gene_names), "\n")
   cat("  Categories:       ", length(object@response_levels), "\n")
   cat("  Credible interval:", object@credible_interval, "\n")
 })
@@ -833,7 +833,7 @@ setMethod("show", "CTresults", function(object) {
 #' Top-level S4 class summarizing the output of
 #' \code{\link{cv_ClassTopics_results}}. It extends \code{CTresults},
 #' inheriting all of its slots (theta, beta, eta, topic correlations, top
-#' variables, regression coefficients, metadata, and the final-model \code{fit}
+#' genes, regression coefficients, metadata, and the final-model \code{fit}
 #' object trained on the full dataset), but replaces the \code{predictions}
 #' slot with \code{cv_predictions}, a \code{\link{cvCTprediction-class}}
 #' object summarizing cross-validated (out-of-fold) performance rather than
@@ -842,19 +842,19 @@ setMethod("show", "CTresults", function(object) {
 #' @slot folds List of numeric vectors, test folds created (observations are
 #'   identified by indexes)
 #' @slot theta An \code{CTparameter} object: document-topic proportions.
-#' @slot beta An \code{CTparameter} object: topic-variable loadings.
+#' @slot beta An \code{CTparameter} object: topic-gene loadings.
 #' @slot eta An \code{CTparameter} object: topic-category regression
 #'   parameters.
 #' @slot topic_correlations Numeric matrix of correlations between topics.
-#' @slot top_vars A named list of \code{data.frame}s, one per topic, each
-#'   giving the top variables and their loading estimates (mean/lower/upper).
+#' @slot top_genes A named list of \code{data.frame}s, one per topic, each
+#'   giving the top genes and their loading estimates (mean/lower/upper).
 #' @slot regression_coefficients A \code{data.frame} summary of \code{eta},
 #'   melted by (category, topic) pairs, with columns for the posterior mean
 #'   and credible interval bounds.
 #' @slot cv_predictions A \code{cvCTprediction} object summarizing k-fold
 #'   cross-validation accuracy and pooled out-of-fold predictions.
 #' @slot response_levels Character vector of category labels.
-#' @slot vars_names Character vector of variable names.
+#' @slot gene_names Character vector of gene names.
 #' @slot credible_interval Numeric scalar giving the credible interval
 #'   width used (e.g. \code{0.95}).
 #' @slot fit The raw fitted model object returned by cmdStan (e.g. a
@@ -864,44 +864,44 @@ setMethod("show", "CTresults", function(object) {
 #' @rdname cvCTresults-class
 #' @exportClass cvCTresults
 setClass("cvCTresults",
-  representation(
-   folds                   = "list", 
-   theta                   = "CTparameter",
-   beta                    = "CTparameter",
-   eta                     = "CTparameter",
-   topic_correlations      = "matrix",
-   top_vars                = "list",
-   regression_coefficients = "data.frame",
-   cv_predictions          = "cvCTprediction",
-   response_levels         = "character",
-   vars_names              = "character",
-   credible_interval       = "numeric",
-   fit                     = "ANY"
-  )
+         representation(
+           folds                   = "list", 
+           theta                   = "CTparameter",
+           beta                    = "CTparameter",
+           eta                     = "CTparameter",
+           topic_correlations      = "matrix",
+           top_genes               = "list",
+           regression_coefficients = "data.frame",
+           cv_predictions          = "cvCTprediction",
+           response_levels         = "character",
+           gene_names              = "character",
+           credible_interval       = "numeric",
+           fit                     = "ANY"
+         )
 )
 
 setValidity("cvCTresults", function(object) {
   errs <- character()
-
+  
   # No additional cross-slot invariants beyond what CTresults and
   # cvCTprediction already enforce individually.
-
+  
   if (length(errs) == 0) TRUE else errs
 })
 
 #' Constructor for cvCTresults
 #'
 #' @param folds List of numeric vectors, test folds created
-#' @param theta A \code{CTparameter} object.
-#' @param beta A \code{CTparameter} object.
-#' @param eta A \code{CTparameter} object.
+#' @param theta An \code{CTparameter} object.
+#' @param beta An \code{CTparameter} object.
+#' @param eta An \code{CTparameter} object.
 #' @param topic_correlations Numeric matrix of topic correlations.
-#' @param top_vars A named list of \code{data.frame}s, one per topic.
+#' @param top_genes A named list of \code{data.frame}s, one per topic.
 #' @param regression_coefficients A \code{data.frame} summary of \code{eta}
 #'   melted by (category, topic) pairs.
 #' @param cv_predictions A \code{cvCTprediction} object.
 #' @param response_levels Character vector of category labels.
-#' @param vars_names Character vector of variable names.
+#' @param gene_names Character vector of gene names.
 #' @param credible_interval Numeric scalar, credible interval width.
 #' @param fit The final model (an \code{CTresults}-producing cmdStan fit,
 #'   or the raw cmdStan fit object) trained on the full dataset.
@@ -909,28 +909,28 @@ setValidity("cvCTresults", function(object) {
 #' @return An object of class \code{cvCTresults}.
 #' @export
 cvCTresults <- function(folds,
-                         theta,
-                         beta,
-                         eta,
-                         topic_correlations,
-                         top_vars,
-                         regression_coefficients,
-                         cv_predictions,
-                         response_levels,
-                         vars_names,
-                         credible_interval,
-                         fit) {
+                        theta,
+                        beta,
+                        eta,
+                        topic_correlations,
+                        top_genes,
+                        regression_coefficients,
+                        cv_predictions,
+                        response_levels,
+                        gene_names,
+                        credible_interval,
+                        fit) {
   new("cvCTresults",
       folds                   = folds,
       theta                   = theta,
       beta                    = beta,
       eta                     = eta,
       topic_correlations      = topic_correlations,
-      top_vars                = top_vars,
+      top_genes               = top_genes,
       regression_coefficients = regression_coefficients,
       cv_predictions          = cv_predictions,
       response_levels         = response_levels,
-      vars_names              = vars_names,
+      gene_names              = gene_names,
       credible_interval       = credible_interval,
       fit                     = fit)
 }
@@ -952,7 +952,7 @@ setMethod("show", "cvCTresults", function(object) {
   cat("  Folds:            ", length(object@folds), "\n")
   cat("  Topics:           ", ncol(object@theta@mean), "\n")
   cat("  Documents:        ", nrow(object@theta@mean), "\n")
-  cat("  Variables:        ", length(object@vars_names), "\n")
+  cat("  Genes:            ", length(object@gene_names), "\n")
   cat("  Categories:       ", length(object@response_levels), "\n")
   cat("  Credible interval:", object@credible_interval, "\n")
   cat("  CV test accuracy: ", round(object@cv_predictions@cv_test_accuracy, 3), "\n")
