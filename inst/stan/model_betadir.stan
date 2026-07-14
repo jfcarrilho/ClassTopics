@@ -3,12 +3,12 @@
 // =============================================================================
 //
 // Generative model:
-//   H[d, k] ~ Gamma(shape, rate)          // topic loadings per patient
-//   beta[k, v]  ~ Dirichlet(alpha_beta)   // gene weights per topic
+//   H[d, k] ~ Gamma(shape, rate)          // topic loadings per observation
+//   beta[k, v]  ~ Dirichlet(alpha_beta)   // variable weights per topic
 //   eta[c, k]   ~ Normal(0, sigma_eta)    // class-topic regression weights
 //
 //   lambda[d, v]  = dot_product(H[d,:], W[:,v])   // Poisson rate
-//   gene_counts[d, v] ~ Poisson(lambda[d, v])     // NMF likelihood
+//   counts[d, v] ~ Poisson(lambda[d, v])     // NMF likelihood
 //
 //   linear_pred[d, c] = eta[c,:] * theta[d,:]'
 //   y[d] ~ Categorical(softmax(linear_pred[d]))   // supervised likelihood
@@ -24,12 +24,12 @@
 
 data{
   int<lower=2> K;                              // number of topics
-  int<lower=2> V;                              // number of genes
-  int<lower=1> D;                              // number of patients
-  array[D, V] int<lower=0> gene_counts;        // gene count matrix: D x V
+  int<lower=2> V;                              // number of variables
+  int<lower=1> D;                              // number of observations
+  array[D, V] int<lower=0> counts;             // count matrix: D x V
 
   int<lower=2> C;                              // number of response categories
-  array[D] int<lower=1, upper=C> y;            // class label for each patient
+  array[D] int<lower=1, upper=C> y;            // class label for each observation
 
   // Hyperparameters
   real<lower=0> shape;                         // Gamma prior shape for H
@@ -44,10 +44,10 @@ data{
 }
 
 parameters{
-  matrix<lower=0>[D, K] H;            // topic loadings:      D x K
-  array[K] simplex[V] beta;           // gene-topic weights:  K x V
+  matrix<lower=0>[D, K] H;            // topic loadings:          D x K
+  array[K] simplex[V] beta;           // variable-topic weights:  K x V
   vector<lower=0>[K] u;               // overall magnitude of each topic
-  matrix[C, K] eta_raw;               // class-topic weights: C x K
+  matrix[C, K] eta_raw;               // class-topic weights:     C x K
 }
 
 transformed parameters{
@@ -57,17 +57,15 @@ transformed parameters{
   }
 
   // ------------------------------------------------------------------
-  // theta_norm : D x K  topic proportions per patient
-  //   Obtained according to the Poisson Non-negative Matrix Factorization to 
-  //   Multinomial Topic Model reparameterization
-  //   (see Carbonetto et al. 2021).
+  // theta : D x K  topic proportions per observation
+  //   Obtained according to Carbonetto et al. (2021).
   //
   //   Procedure:
   //     HU[d, k]    = H[d, k] * u[k]              // scale by topic weight
   //     theta[d, k] = HU[d, k] / sum_k HU[d, k']  // row-normalise
   //
   //   Rows of theta sum to 1 and are interpretable as the fraction
-  //   of each patient's gene expression explained by each topic.
+  //   of each observation's variable expression explained by each topic.
   // ------------------------------------------------------------------
   matrix[D, K] theta;
   for(d in 1:D){
@@ -109,9 +107,9 @@ model{
   for(d in 1:D){
     target += -dot_product(H[d, :], W * rep_vector(1.0, V));
     for(v in 1:V){
-      if (gene_counts[d, v] > 0){
+      if (counts[d, v] > 0){
         real lambda_dv = dot_product(H[d, :], W[:, v]);
-        target += gene_counts[d, v] * log(lambda_dv);
+        target += counts[d, v] * log(lambda_dv);
       }
     }
   }
@@ -133,7 +131,7 @@ generated quantities{
   // ------------------------------------------------------------------
   // Log-likelihoods (for model comparison, LOO-CV, etc.)
   // ------------------------------------------------------------------
-  real gene_log_lik     = 0;
+  real var_log_lik     = 0;
   real response_log_lik = 0;
   real total_log_lik;
 
@@ -145,11 +143,11 @@ generated quantities{
 
   // NMF log-likelihood (sparse: skip zero counts still accounting for -lambda)
   for(d in 1:D){
-    gene_log_lik += -dot_product(H[d, :], W * rep_vector(1.0, V));
+    var_log_lik += -dot_product(H[d, :], W * rep_vector(1.0, V));
     for(v in 1:V){
-      if (gene_counts[d, v] > 0){
+      if (counts[d, v] > 0){
         real lambda_dv = dot_product(H[d, :], W[:, v]);
-        gene_log_lik += gene_counts[d, v] * log(lambda_dv);
+        var_log_lik += counts[d, v] * log(lambda_dv);
       }
     }
   }
@@ -165,7 +163,7 @@ generated quantities{
     response_log_lik  += categorical_logit_lpmf(y[d] | linear_pred);
   }
 
-  total_log_lik = gene_log_lik + response_log_lik;
+  total_log_lik = var_log_lik + response_log_lik;
 
   // ------------------------------------------------------------------
   // Topic correlations (diagnostic: are topics distinguishable?)

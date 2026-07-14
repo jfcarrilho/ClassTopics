@@ -7,7 +7,7 @@
 //   W and eta come from the respective training posterior means
 //
 //   lambda[d, v]  = dot_product(H[d,:], W[:,v]) // Poisson rate
-//   gene_counts[d, v] ~ Poisson(lambda[d, v])          // NMF likelihood
+//   counts[d, v] ~ Poisson(lambda[d, v])          // NMF likelihood
 //
 //   linear_pred[d, c] = eta[c,:] * theta[d,:]'
 //   y[d] ~ Categorical(softmax(linear_pred[d]))        // supervised likelihood
@@ -22,9 +22,9 @@
 
 data{
   int<lower=2> K;                              // number of topics
-  int<lower=2> V;                              // number of genes
+  int<lower=2> V;                              // number of variables
   int<lower=1> D;                              // number of patients
-  array[D, V] int<lower=0> gene_counts;        // gene count matrix: D x V
+  array[D, V] int<lower=0> counts;             // count matrix: D x V
 
   int<lower=2> C;                              // number of response categories
   array[D] int<lower=1, upper=C> y;            // class label for each patient
@@ -33,7 +33,7 @@ data{
   real<lower=0> shape;                         // Gamma prior shape for theta
   real<lower=0> rate;                          // Gamma prior rate for theta
   
-  matrix<lower=0>[K, V] W;                     // gene-topic weights:  K x V
+  matrix<lower=0>[K, V] W;                     // variable-topic weights:  K x V
   matrix[C, K]          eta;                   // class-topic weights: C x K
 }
 
@@ -41,7 +41,7 @@ transformed data{
   // ------------------------------------------------------------------
   // u : K  topic scales
   //   u[k] = sum_v W[k, v]
-  //   The total gene weight attributed to topic k. Topics with larger u
+  //   The total variable weight attributed to topic k. Topics with larger u
   //   contribute more to the overall Poisson reconstruction, so raw
   //   loadings H[d, k] must be rescaled by u[k] before comparing
   //   across topics within a patient.
@@ -69,7 +69,7 @@ transformed parameters{
   //     theta[d, k] = HU[d, k] / sum_k HU[d, k']  // row-normalise
   //
   //   Rows of theta sum to 1 and are interpretable as the fraction
-  //   of each patient's gene expression explained by each topic.
+  //   of each patient's variable expression explained by each topic.
   // ------------------------------------------------------------------
   matrix[D, K] theta;
   for(d in 1:D){
@@ -95,9 +95,9 @@ model{
   for(d in 1:D){
     target += -dot_product(H[d, :], W * rep_vector(1.0, V));
     for(v in 1:V){
-      if (gene_counts[d, v] > 0){
+      if (counts[d, v] > 0){
         real lambda_dv = dot_product(H[d, :], W[:, v]);
-        target += gene_counts[d, v] * log(lambda_dv);
+        target += counts[d, v] * log(lambda_dv);
       }
     }
   }
@@ -107,7 +107,7 @@ generated quantities{
   // ------------------------------------------------------------------
   // Log-likelihoods (for model comparison, LOO-CV, etc.)
   // ------------------------------------------------------------------
-  real gene_log_lik     = 0;
+  real var_log_lik     = 0;
   real response_log_lik = 0;
   real total_log_lik;
 
@@ -119,11 +119,11 @@ generated quantities{
 
   // NMF log-likelihood (sparse: skip zero counts still accounting for -lambda)
   for(d in 1:D){
-    gene_log_lik += -dot_product(H[d, :], W * rep_vector(1.0, V));
+    var_log_lik += -dot_product(H[d, :], W * rep_vector(1.0, V));
     for(v in 1:V){
-      if (gene_counts[d, v] > 0){
+      if (counts[d, v] > 0){
         real lambda_dv = dot_product(H[d, :], W[:, v]);
-        gene_log_lik += gene_counts[d, v] * log(lambda_dv);
+        var_log_lik += counts[d, v] * log(lambda_dv);
       }
     }
   }
@@ -139,6 +139,6 @@ generated quantities{
     response_log_lik  += categorical_logit_lpmf(y[d] | linear_pred);
   }
 
-  total_log_lik = gene_log_lik + response_log_lik;
+  total_log_lik = var_log_lik + response_log_lik;
 }
 
