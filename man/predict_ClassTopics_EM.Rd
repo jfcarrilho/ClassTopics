@@ -8,8 +8,8 @@ predict_ClassTopics_EM(
   counts_test,
   W,
   eta,
-  mu_target,
   response,
+  shape = 1,
   n_iter_EM = 4,
   verbose = TRUE
 )
@@ -21,9 +21,9 @@ predict_ClassTopics_EM(
 
 \item{eta}{Learned regression coefficients \code{C, K}}
 
-\item{mu_target}{reciprocal of the rate parameter}
-
 \item{response}{Character vector of response categories}
+
+\item{shape}{scalar prior shape of H (default = 1)}
 
 \item{n_iter_EM}{Number of required EM iterations}
 

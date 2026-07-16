@@ -8,8 +8,8 @@ predict_ClassTopics_stan(
   counts_test,
   W,
   eta,
-  mu_target,
   response,
+  shape = 1,
   cores = 3,
   chains = 3,
   control = list(adapt_delta = 0.9, max_treedepth = 15),
@@ -27,9 +27,9 @@ predict_ClassTopics_stan(
 
 \item{eta}{Learned regression coefficients \code{C, K}}
 
-\item{mu_target}{reciprocal of the rate parameter}
-
 \item{response}{Character vector of response categories}
+
+\item{shape}{scalar prior shape of H (default = 1)}
 
 \item{cores}{number of CPU cores to use (default = \code{3})}
 

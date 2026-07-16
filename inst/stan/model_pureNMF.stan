@@ -34,9 +34,16 @@ data{
   real<lower=0> shape;                         // Gamma prior shape for H, W
   real<lower=0> rate;                          // Gamma prior rate  for H, W
   real<lower=0> sigma_eta;                     // Normal prior SD for eta
-  
-  real<lower=0> lambda_cat;                    // likelihood weight for
-                                               // categorical component
+}
+
+transformed data{
+  array[D] int<lower=1> N;
+  for(d in 1:D){
+    N[d] = sum(counts[d,:]);
+  }
+  real mean_N = mean(to_vector(N));            // defined here so this
+                                               // particular calculation
+                                               //is performed only once
 }
 
 parameters{
@@ -114,11 +121,11 @@ model{
   // use target += and handle the full expression explicitly.
   // ------------------------------------------------------------------
   for(d in 1:D){
-    target += -dot_product(H[d, :], W * rep_vector(1.0, V));
+    target += -dot_product(H[d, :], W * rep_vector(1.0, V)) / mean_N;
     for(v in 1:V){
       if (counts[d, v] > 0){
         real lambda_dv = dot_product(H[d, :], W[:, v]);
-        target += counts[d, v] * log(lambda_dv);
+        target += counts[d, v] * log(lambda_dv) / mean_N;
       }
     }
   }
@@ -132,7 +139,7 @@ model{
     for (c in 1:C){
       linear_pred[c] = dot_product(eta[c, :], theta[d, :]);
     }
-    target += lambda_cat * categorical_logit_lpmf(y[d] | linear_pred);
+    target += categorical_logit_lpmf(y[d] | linear_pred);
   }
 }
 

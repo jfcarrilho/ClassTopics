@@ -9,10 +9,10 @@ ClassTopics(
   counts,
   response,
   K = 6,
-  sigma_eta = NULL,
+  shape = 4,
+  sigma_eta = 0.5,
   betadir = TRUE,
   alpha_beta = 0.05,
-  lambda_cat = 1,
   lambda_ridge = 0,
   n_iter_EM = 10,
   verbose_EM = TRUE,
@@ -32,18 +32,16 @@ ClassTopics(
 
 \item{K}{number of topics to be modeled (default = \code{6})}
 
-\item{sigma_eta}{scalar prior sd of the coefficients of the eta matrix. If
-\code{NULL} (default), it is internally defined as
-\eqn{2/\sqrt{\mathtt{lambda\_cat}}}}
+\item{shape}{scalar prior shape of the NMF coefficients (default = 4)}
+
+\item{sigma_eta}{scalar prior sd of the coefficients of the eta matrix
+(default = 0.5)}
 
 \item{betadir}{logical, controls whether beta is estimated with Dirichlet
 prior (default = \code{TRUE})}
 
 \item{alpha_beta}{numeric hyperparameter of the symmetric Dirichlet
 distribution if \code{betadir = TRUE} (default = 0.05)}
-
-\item{lambda_cat}{numeric value that represents a weight for the supervised
-component in model estimation (default = \code{1})}
 
 \item{lambda_ridge}{numeric ridge-penalty weight applied to the
 regression coefficients \code{eta} (default = \code{0},

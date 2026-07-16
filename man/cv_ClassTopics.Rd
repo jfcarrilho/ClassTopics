@@ -9,6 +9,8 @@ cv_ClassTopics(
   response,
   k_folds = 5,
   K_topics = 3,
+  shape = 4,
+  shape_test = 1,
   sigma_eta = 0.5,
   betadir = TRUE,
   alpha_beta = 0.05,
@@ -19,7 +21,6 @@ cv_ClassTopics(
   n_iter_EM = 4,
   n_iter_EM_test = 4,
   test_stan = TRUE,
-  lambda_cat = 1,
   lambda_ridge = 0,
   chains = 3,
   cores = 3,
@@ -36,9 +37,11 @@ cv_ClassTopics(
 
 \item{K_topics}{number of topics to be modeled (default = 3)}
 
-\item{sigma_eta}{scalar prior sd of the coefficients of the eta matrix. If
-NULL (default), it is internally defined as
-\code{2/sqrt(lambda_cat)}}
+\item{shape}{scalar prior shape of the NMF coefficients (default = 4)}
+
+\item{shape_test}{scalar prior shape of the H matrix on test sets (default = 4)}
+
+\item{sigma_eta}{scalar prior sd of the coefficients of the eta matrix}
 
 \item{betadir}{logical, controls whether beta is estimated with Dirichlet
 prior (default = \code{TRUE}) or, if \code{FALSE}, with Gamma prior}
@@ -64,9 +67,6 @@ each fold's held-out (test) data (default = 4)}
 \item{test_stan}{logical, if \code{TRUE} (default) test-fold topic proportions
 are fit via Stan (see \code{\link[=predict_ClassTopics_stan]{predict_ClassTopics_stan()}});
 if \code{FALSE}, via EM only (see \code{\link[=predict_ClassTopics_EM]{predict_ClassTopics_EM()}})}
-
-\item{lambda_cat}{numeric value that represents a weight for the supervised
-component in model estimation (default = 1)}
 
 \item{lambda_ridge}{numeric ridge-penalty weight applied to the
 regression coefficients \code{eta} (default = 0, i.e. no

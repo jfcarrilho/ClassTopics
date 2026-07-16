@@ -85,15 +85,13 @@
 #' @param counts count matrix
 #' @param response character or factor vector on the class labels
 #' @param K number of topics to be modeled (default = \code{6})
-#' @param sigma_eta scalar prior sd of the coefficients of the eta matrix. If
-#'                  \code{NULL} (default), it is internally defined as
-#'                  \eqn{2/\sqrt{\mathtt{lambda\_cat}}}
+#' @param shape scalar prior shape of the NMF coefficients (default = 4)
+#' @param sigma_eta scalar prior sd of the coefficients of the eta matrix
+#'                  (default = 0.5)
 #' @param betadir logical, controls whether beta is estimated with Dirichlet
 #'                prior (default = \code{TRUE})
 #' @param alpha_beta numeric hyperparameter of the symmetric Dirichlet
 #'                   distribution if \code{betadir = TRUE} (default = 0.05)
-#' @param lambda_cat numeric value that represents a weight for the supervised
-#'                   component in model estimation (default = \code{1})
 #' @param lambda_ridge numeric ridge-penalty weight applied to the
 #'                     regression coefficients \code{eta} (default = \code{0},
 #'                     i.e. no ridge penalty)
@@ -130,10 +128,10 @@
 ClassTopics <- function(counts,
                         response,
                         K = 6,
-                        sigma_eta = NULL,
+                        shape = 4,
+                        sigma_eta = 0.5,
                         betadir = TRUE,
                         alpha_beta = 0.05,
-                        lambda_cat = 1,
                         lambda_ridge = 0,
                         n_iter_EM = 10,
                         verbose_EM = TRUE,
@@ -224,17 +222,8 @@ ClassTopics <- function(counts,
   #### INITIALIZATION WITH EM ####
   
   mu_target <- sqrt(mean(counts) / K)
-  shape <- 2
   
-  rate <- 2 / mu_target
-  
-  if(is.null(sigma_eta)){
-    sigma_eta <- 2 / sqrt(lambda_cat)
-  }
-  
-  # if(is.null(lambda_reg)){
-  #   lambda_reg <- 1 / sigma_eta^2
-  # }
+  rate <- shape / mu_target
   
   stan_init <- lapply(1:chains, function(chain){
     set.seed(chain)
@@ -264,7 +253,6 @@ ClassTopics <- function(counts,
     shape = shape,
     rate = rate,
     sigma_eta = sigma_eta,
-    lambda_cat = lambda_cat,
     lambda_ridge_eta = lambda_ridge
   )
   
@@ -395,8 +383,8 @@ ClassTopics <- function(counts,
 #' @param counts_test Matrix of counts
 #' @param W Learned topic-variable loadings \code{K, V}
 #' @param eta Learned regression coefficients \code{C, K}
-#' @param mu_target reciprocal of the rate parameter
 #' @param response Character vector of response categories
+#' @param shape scalar prior shape of H (default = 1)
 #' @param cores number of CPU cores to use (default = \code{3})
 #' @param chains number of chains to run (default = \code{3})
 #' @param control control parameters for the Stan algorithm
@@ -415,8 +403,8 @@ predict_ClassTopics_stan <- function(
     counts_test,
     W,
     eta,
-    mu_target,
     response,
+    shape = 1,
     cores = 3,
     chains = 3,
     control = list(adapt_delta = 0.90,
@@ -438,9 +426,9 @@ predict_ClassTopics_stan <- function(
     eta <- rbind(eta, -eta)
   }
   
-  shape <- 1
+  mu_target <- sqrt(mean(counts_test) / K)
   
-  rate <- 1 / mu_target
+  rate <- shape / mu_target
   
   stan_init <- lapply(1:chains, function(chain){
     set.seed(chain)
@@ -505,8 +493,8 @@ predict_ClassTopics_stan <- function(
 #' @param counts_test Matrix of counts
 #' @param W Learned topic-variable loadings \code{K, V}
 #' @param eta Learned regression coefficients \code{C, K}
-#' @param mu_target reciprocal of the rate parameter
 #' @param response Character vector of response categories
+#' @param shape scalar prior shape of H (default = 1)
 #' @param n_iter_EM Number of required EM iterations
 #' @param verbose logical that controls whether EM likelihood is printed
 #'                (default = \code{TRUE})
@@ -517,8 +505,8 @@ predict_ClassTopics_EM <- function(
     counts_test,
     W,
     eta,
-    mu_target,
     response,
+    shape = 1,
     n_iter_EM = 4,
     verbose = TRUE
   ){
@@ -534,9 +522,9 @@ predict_ClassTopics_EM <- function(
     eta <- rbind(eta, -eta)
   }
   
-  shape <- 1
+  mu_target <- sqrt(mean(counts_test) / K)
   
-  rate <- 1 / mu_target
+  rate <- shape / mu_target
   
   H0 <- matrix(rgamma(D * K, shape = shape, rate = rate), D, K)
   
@@ -585,9 +573,10 @@ predict_ClassTopics_EM <- function(
 #' @param folds list whose elements are train-test partitions
 #' @param fold index of the fold to be fitted a ClassTopics model
 #' @param K_topics number of topics to be modeled (default = \code{3})
-#' @param sigma_eta scalar prior sd of the coefficients of the eta matrix. If
-#'                  NULL (default), it is internally defined as
-#'                  \eqn{2/\sqrt{\mathtt{lambda\_cat}}}
+#' @param shape scalar prior shape of the NMF coefficients (default = 4)
+#' @param shape_test scalar prior shape of the H matrix on test sets (default = 4)
+#' @param sigma_eta scalar prior sd of the coefficients of the eta matrix
+#'                  (default = 0.5)
 #' @param betadir logical, controls whether beta is estimated with Dirichlet
 #'                prior (default = \code{TRUE}) or, if \code{FALSE}, with Gamma prior
 #' @param alpha_beta numeric hyperparameter of the symmetric Dirichlet
@@ -605,8 +594,6 @@ predict_ClassTopics_EM <- function(
 #'                  proportions are fit via Stan (see
 #'                  [predict_ClassTopics_stan()]); if \code{FALSE}, via EM
 #'                  only (see [predict_ClassTopics_EM()])
-#' @param lambda_cat numeric value that represents a weight for the supervised
-#'                   component in model estimation (default = \code{1})
 #' @param lambda_ridge numeric ridge-penalty weight applied to the
 #'                     regression coefficients \code{eta} (default = \code{0},
 #'                     i.e. no ridge penalty)
@@ -634,6 +621,8 @@ predict_ClassTopics_EM <- function(
     folds,
     fold, 
     K_topics = 3,
+    shape = 4,
+    shape_test = 1,
     sigma_eta = 0.5,
     betadir = TRUE,
     alpha_beta = 0.05,
@@ -644,7 +633,6 @@ predict_ClassTopics_EM <- function(
     n_iter_EM = 4,
     n_iter_EM_test = 4,
     test_stan = TRUE,
-    lambda_cat = 10000,
     lambda_ridge = 0,
     chains = 3,
     cores = 3,
@@ -693,6 +681,7 @@ predict_ClassTopics_EM <- function(
         response = response[train_indices],
         K = K_topics,
         sigma_eta = sigma_eta,
+        shape = shape,
         betadir = betadir,
         alpha_beta = alpha_beta,
         seed = seed,
@@ -700,7 +689,6 @@ predict_ClassTopics_EM <- function(
         iter_warmup = iter_warmup,
         iter_sampling = iter_sampling,
         n_iter_EM = n_iter_EM,
-        lambda_cat = lambda_cat,
         lambda_ridge = lambda_ridge,
         chains = chains,
         cores = cores,
@@ -751,8 +739,6 @@ predict_ClassTopics_EM <- function(
     
     # Predict on test fold
     
-    mu_target <- sqrt(mean(train_counts) / K_topics)
-    
     mod <- .get_stan_model("model_test")
     
     if(test_stan){
@@ -762,8 +748,8 @@ predict_ClassTopics_EM <- function(
                              drop = FALSE],
         W = W_pred,
         eta = eta_fold,
-        mu_target = mu_target,
         response = response[test_indices],
+        shape = shape_test,
         seed = seed,
         iter_warmup = iter_warmup,
         iter_sampling = iter_sampling,
@@ -780,7 +766,7 @@ predict_ClassTopics_EM <- function(
                              drop = FALSE],
         W = W_pred,
         eta = eta_fold,
-        mu_target = mu_target,
+        shape = shape_test,
         response = response[test_indices],
         n_iter_EM = n_iter_EM_test
       )
@@ -1051,9 +1037,10 @@ predict_ClassTopics_EM <- function(
 #' @param response character or factor vector on the class labels
 #' @param k_folds number of folds to create for cross-validation (default = 5)
 #' @param K_topics number of topics to be modeled (default = 3)
-#' @param sigma_eta scalar prior sd of the coefficients of the eta matrix. If
-#'                  NULL (default), it is internally defined as
-#'                  `2/sqrt(lambda_cat)`
+#' @param shape scalar prior shape of the NMF coefficients (default = 4)
+#' @param shape_test scalar prior shape of the H matrix on test sets (default = 4)
+#' @param sigma_eta scalar prior sd of the coefficients of the eta matrix
+#'                  (default = 0.5)
 #' @param betadir logical, controls whether beta is estimated with Dirichlet
 #'                prior (default = `TRUE`) or, if `FALSE`, with Gamma prior
 #' @param alpha_beta numeric hyperparameter of the symmetric Dirichlet
@@ -1070,8 +1057,6 @@ predict_ClassTopics_EM <- function(
 #' @param test_stan logical, if `TRUE` (default) test-fold topic proportions
 #'                  are fit via Stan (see [predict_ClassTopics_stan()]);
 #'                  if `FALSE`, via EM only (see [predict_ClassTopics_EM()])
-#' @param lambda_cat numeric value that represents a weight for the supervised
-#'                   component in model estimation (default = 1)
 #' @param lambda_ridge numeric ridge-penalty weight applied to the
 #'                     regression coefficients `eta` (default = 0, i.e. no
 #'                     ridge penalty)
@@ -1096,6 +1081,8 @@ predict_ClassTopics_EM <- function(
     response,
     k_folds = 5,
     K_topics = 3,
+    shape = 4,
+    shape_test = 1,
     sigma_eta = 0.5,
     betadir = TRUE,
     alpha_beta = 0.05,
@@ -1106,7 +1093,6 @@ predict_ClassTopics_EM <- function(
     n_iter_EM = 4,
     n_iter_EM_test = 4,
     test_stan = TRUE,
-    lambda_cat = 1,
     lambda_ridge = 0,
     ...){
   
@@ -1165,7 +1151,6 @@ predict_ClassTopics_EM <- function(
       iter_warmup = iter_warmup,
       iter_sampling = iter_sampling,
       n_iter_EM = n_iter_EM,
-      lambda_cat = lambda_cat,
       lambda_ridge = lambda_ridge,
       ...
     )
@@ -1207,8 +1192,6 @@ predict_ClassTopics_EM <- function(
     
     # Predict on test fold
     
-    mu_target <- sqrt(mean(train_counts) / K_topics)
-    
     mod <- .get_stan_model("model_test")
     
     if(test_stan){
@@ -1218,8 +1201,8 @@ predict_ClassTopics_EM <- function(
                              drop = FALSE],
         W = W_pred,
         eta = eta_fold,
-        mu_target = mu_target,
         response = response[test_indices],
+        shape = shape_test,
         seed = seed,
         iter_warmup = iter_warmup,
         iter_sampling = iter_sampling,
@@ -1234,7 +1217,7 @@ predict_ClassTopics_EM <- function(
                              drop = FALSE],
         W = W_pred,
         eta = eta_fold,
-        mu_target = mu_target,
+        shape = shape_test,
         response = response[test_indices],
         n_iter_EM = n_iter_EM_test
       )
@@ -1372,7 +1355,6 @@ predict_ClassTopics_EM <- function(
     iter_warmup = iter_warmup,
     iter_sampling = iter_sampling,
     n_iter_EM = n_iter_EM,
-    lambda_cat = lambda_cat,
     ...
   )
   
@@ -1425,9 +1407,9 @@ predict_ClassTopics_EM <- function(
 #' @param response character or factor vector on the class labels
 #' @param k_folds number of folds to create for cross-validation (default = 5)
 #' @param K_topics number of topics to be modeled (default = 3)
-#' @param sigma_eta scalar prior sd of the coefficients of the eta matrix. If
-#'                  NULL (default), it is internally defined as
-#'                  `2/sqrt(lambda_cat)`
+#' @param shape scalar prior shape of the NMF coefficients (default = 4)
+#' @param sigma_eta scalar prior sd of the coefficients of the eta matrix
+#' @param shape_test scalar prior shape of the H matrix on test sets (default = 4)
 #' @param betadir logical, controls whether beta is estimated with Dirichlet
 #'                prior (default = `TRUE`) or, if `FALSE`, with Gamma prior
 #' @param alpha_beta numeric hyperparameter of the symmetric Dirichlet
@@ -1444,8 +1426,6 @@ predict_ClassTopics_EM <- function(
 #' @param test_stan logical, if `TRUE` (default) test-fold topic proportions
 #'                  are fit via Stan (see [predict_ClassTopics_stan()]);
 #'                  if `FALSE`, via EM only (see [predict_ClassTopics_EM()])
-#' @param lambda_cat numeric value that represents a weight for the supervised
-#'                   component in model estimation (default = 1)
 #' @param lambda_ridge numeric ridge-penalty weight applied to the
 #'                     regression coefficients `eta` (default = 0, i.e. no
 #'                     ridge penalty)
@@ -1475,6 +1455,8 @@ cv_ClassTopics <- function(
     response,
     k_folds = 5,
     K_topics = 3,
+    shape = 4,
+    shape_test = 1,
     sigma_eta = 0.5,
     betadir = TRUE,
     alpha_beta = 0.05,
@@ -1485,7 +1467,6 @@ cv_ClassTopics <- function(
     n_iter_EM = 4,
     n_iter_EM_test = 4,
     test_stan = TRUE,
-    lambda_cat = 1,
     lambda_ridge = 0,
     chains = 3,
     cores = 3,
@@ -1591,12 +1572,12 @@ cv_ClassTopics <- function(
       K = K_topics,
       seed = seed,
       sigma_eta = sigma_eta,
+      shape = shape,
       alpha_beta = alpha_beta,
       betadir = betadir,
       iter_warmup = iter_warmup,
       iter_sampling = iter_sampling,
       n_iter_EM = n_iter_EM,
-      lambda_cat = lambda_cat,
       chains = chains,
       cores = cores,
       control = control,
@@ -1631,6 +1612,8 @@ cv_ClassTopics <- function(
           fold = fold_local,
           K_topics = K_topics,
           sigma_eta = sigma_eta,
+          shape = shape,
+          shape_test = shape_test,
           betadir = betadir,
           alpha_beta = alpha_beta,
           seed = seed,
@@ -1640,7 +1623,6 @@ cv_ClassTopics <- function(
           n_iter_EM = n_iter_EM,
           n_iter_EM_test = n_iter_EM_test,
           test_stan = test_stan,
-          lambda_cat = lambda_cat,
           lambda_ridge = lambda_ridge,
           chains = chains,
           cores = cores,
