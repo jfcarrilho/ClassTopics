@@ -652,162 +652,154 @@ predict_ClassTopics_EM <- function(
   
   k_folds <- length(folds)
   
-  cat(sprintf("\n=== %d-Fold Cross-Validation ===\n", k_folds))
-    
-    if (!verbose_per_fold) {
-      cat(sprintf("Fold %d/%d... ", fold, k_folds))
-    } else {
-      cat(sprintf("\n========== FOLD %d/%d ==========\n", fold, k_folds))
-    }
-    
-    test_indices <- folds[[fold]]
-    train_indices <- setdiff(1:D, test_indices)
-    
-    if (verbose_per_fold) {
-      cat(sprintf("Train: %d patients, Test: %d patients\n", 
-                  length(train_indices), length(test_indices)))
-    }
-    
-    nonzero_train_cols <- (1:ncol(counts[train_indices,]))[
-      colSums(counts[train_indices,]) != 0]
-    
-    train_counts <- counts[train_indices,
-                           nonzero_train_cols,
-                           drop = FALSE]
+  test_indices <- folds[[fold]]
+  train_indices <- setdiff(1:D, test_indices)
+  
+  if (verbose_per_fold) {
+    cat(sprintf("Train: %d patients, Test: %d patients\n", 
+                length(train_indices), length(test_indices)))
+  }
+  
+  nonzero_train_cols <- (1:ncol(counts[train_indices,]))[
+    colSums(counts[train_indices,]) != 0]
+  
+  train_counts <- counts[train_indices,
+                         nonzero_train_cols,
+                         drop = FALSE]
 
-      # Fit on training fold
-      fit_fold <- ClassTopics(
-        counts = train_counts,
-        response = response[train_indices],
-        K = K_topics,
-        sigma_eta = sigma_eta,
-        shape = shape,
-        betadir = betadir,
-        alpha_beta = alpha_beta,
-        seed = seed,
-        verbose = FALSE,
-        iter_warmup = iter_warmup,
-        iter_sampling = iter_sampling,
-        n_iter_EM = n_iter_EM,
-        lambda_ridge = lambda_ridge,
-        chains = chains,
-        cores = cores,
-        control = control,
-        ...
-      )
-    
-    if(verbose_per_fold){
-      cat(sprintf("Model %d/%d fitted!\n", fold, k_folds))
-      cat("Extracting parameters and predictions...\n")
-    }
-    
-    draws <- posterior::as_draws_rvars(fit_fold$draws())
-    
-    eta_means_mat <- matrix(colMeans(posterior::E(draws$eta)),
-                            nrow = C, ncol = K_topics, byrow = TRUE)
-    
-    beta_fold <- posterior::E(draws$beta)
-    W_pred <- posterior::E(draws$W)
-    eta_fold <- posterior::E(draws$eta) - eta_means_mat
-    
-    y_pred_mode <- posterior::modal_category(draws$y_pred)
-    response_probs_mode <- posterior::E(draws$response_probs)
-    
-    # Calculate prediction accuracy
-    fold_tr_acc <- mean(response_levels[y_pred_mode] == response[train_indices])
-    
-    pred_n_acc <- .build_cv_list(
-      D = D,
-      response_levels = response_levels,
-      k_folds = k_folds)
-    
-    pred_n_acc$fold_train_accuracies[fold] <- fold_tr_acc
-    
-    # ADDED: Calculate per-category training accuracy
-    train_confusion <- table(
-      Predicted = response_levels[y_pred_mode],
-      Truth = response[train_indices]
+    # Fit on training fold
+    fit_fold <- ClassTopics(
+      counts = train_counts,
+      response = response[train_indices],
+      K = K_topics,
+      sigma_eta = sigma_eta,
+      shape = shape,
+      betadir = betadir,
+      alpha_beta = alpha_beta,
+      seed = seed,
+      verbose = FALSE,
+      iter_warmup = iter_warmup,
+      iter_sampling = iter_sampling,
+      n_iter_EM = n_iter_EM,
+      lambda_ridge = lambda_ridge,
+      chains = chains,
+      cores = cores,
+      control = control,
+      ...
     )
-    train_class_acc <- diag(train_confusion) / table(response[train_indices])
-    pred_n_acc$fold_train_class_accuracies[fold, names(train_class_acc)] <-
-      train_class_acc
-    
-    if(verbose_per_fold){
-      cat("Extracted for training set!\n")
-      cat("Predicting for test set...\n")
-    }
-    
-    # Predict on test fold
-    
-    mod <- .get_stan_model("model_test")
-    
-    if(test_stan){
-      test_pred <- predict_ClassTopics_stan(
-        counts_test = counts[test_indices,
-                             nonzero_train_cols,
-                             drop = FALSE],
-        W = W_pred,
-        eta = eta_fold,
-        response = response[test_indices],
-        shape = shape_test,
-        seed = seed,
-        iter_warmup = iter_warmup,
-        iter_sampling = iter_sampling,
-        n_iter_EM = n_iter_EM_test,
-        chains = chains,
-        cores = cores,
-        control = control
-      )
-    }
-    else{
-      test_pred <- predict_ClassTopics_EM(
-        counts_test = counts[test_indices,
-                             nonzero_train_cols,
-                             drop = FALSE],
-        W = W_pred,
-        eta = eta_fold,
-        shape = shape_test,
-        response = response[test_indices],
-        n_iter_EM = n_iter_EM_test
-      )
-    }
-    
-    if(verbose_per_fold){
-      cat("Predicted!\n")
-    }
-    
-    # Store test predictions
-    pred_n_acc$all_test_predictions[test_indices] <-
-      test_pred@predicted_class
-    
-    pred_n_acc$all_test_pred_probs[test_indices, ] <-
-      test_pred@predicted_probs
-    
-    # Calculate test accuracy
-    test_response_factor <- factor(response[test_indices], levels = response_levels)
-    pred_n_acc$fold_test_accuracies[fold] <- mean(test_pred@predicted_class ==
-                                         test_response_factor)
-    
-    # Calculate per-category test accuracy
-    test_confusion <- table(
-      Predicted = test_pred@predicted_class,
-      Truth = test_response_factor
+  
+  if(verbose_per_fold){
+    cat("Model fitted!\n")
+    cat("Extracting parameters and predictions...\n")
+  }
+  
+  draws <- posterior::as_draws_rvars(fit_fold$draws())
+  
+  eta_means_mat <- matrix(colMeans(posterior::E(draws$eta)),
+                          nrow = C, ncol = K_topics, byrow = TRUE)
+  
+  beta_fold <- posterior::E(draws$beta)
+  W_pred <- posterior::E(draws$W)
+  eta_fold <- posterior::E(draws$eta) - eta_means_mat
+  
+  y_pred_mode <- posterior::modal_category(draws$y_pred)
+  response_probs_mode <- posterior::E(draws$response_probs)
+  
+  # Calculate prediction accuracy
+  fold_tr_acc <- mean(response_levels[y_pred_mode] == response[train_indices])
+  
+  pred_n_acc <- .build_cv_list(
+    D = D,
+    response_levels = response_levels,
+    k_folds = k_folds)
+  
+  pred_n_acc$fold_train_accuracies[fold] <- fold_tr_acc
+  
+  # ADDED: Calculate per-category training accuracy
+  train_confusion <- table(
+    Predicted = response_levels[y_pred_mode],
+    Truth = response[train_indices]
+  )
+  train_class_acc <- diag(train_confusion) / table(response[train_indices])
+  pred_n_acc$fold_train_class_accuracies[fold, names(train_class_acc)] <-
+    train_class_acc
+  
+  if(verbose_per_fold){
+    cat("Extracted for training set!\n")
+    cat("Predicting for test set...\n")
+  }
+  
+  # Predict on test fold
+  
+  mod <- .get_stan_model("model_test")
+  
+  if(test_stan){
+    test_pred <- predict_ClassTopics_stan(
+      counts_test = counts[test_indices,
+                           nonzero_train_cols,
+                           drop = FALSE],
+      W = W_pred,
+      eta = eta_fold,
+      response = response[test_indices],
+      shape = shape_test,
+      seed = seed,
+      iter_warmup = iter_warmup,
+      iter_sampling = iter_sampling,
+      n_iter_EM = n_iter_EM_test,
+      chains = chains,
+      cores = cores,
+      control = control
     )
-    test_class_acc <- diag(test_confusion) / table(test_response_factor)
-    pred_n_acc$fold_test_class_accuracies[fold, names(test_class_acc)] <- test_class_acc
+  }
+  else{
+    test_pred <- predict_ClassTopics_EM(
+      counts_test = counts[test_indices,
+                           nonzero_train_cols,
+                           drop = FALSE],
+      W = W_pred,
+      eta = eta_fold,
+      shape = shape_test,
+      response = response[test_indices],
+      n_iter_EM = n_iter_EM_test
+    )
+  }
+  
+  if(verbose_per_fold){
+    cat("Predicted!\n")
+  }
+  
+  # Store test predictions
+  pred_n_acc$all_test_predictions[test_indices] <-
+    test_pred@predicted_class
+  
+  pred_n_acc$all_test_pred_probs[test_indices, ] <-
+    test_pred@predicted_probs
+  
+  # Calculate test accuracy
+  test_response_factor <- factor(response[test_indices], levels = response_levels)
+  pred_n_acc$fold_test_accuracies[fold] <- mean(test_pred@predicted_class ==
+                                       test_response_factor)
+  
+  # Calculate per-category test accuracy
+  test_confusion <- table(
+    Predicted = test_pred@predicted_class,
+    Truth = test_response_factor
+  )
+  test_class_acc <- diag(test_confusion) / table(test_response_factor)
+  pred_n_acc$fold_test_class_accuracies[fold, names(test_class_acc)] <- test_class_acc
+  
+  if(verbose_per_fold){
+    cat("Fold results extracted!\n\n")
     
-    if(verbose_per_fold){
-      cat("Fold results extracted!\n\n")
-      
-      cat(sprintf("Train: %.1f%%, Test: %.1f%%\n", 
-                  pred_n_acc$fold_train_accuracies[fold] * 100, 
-                  pred_n_acc$fold_test_accuracies[fold] * 100))
-    } else {
-      cat(sprintf("Fold %d Train Accuracy: %.2f%%\n", fold,
-                  pred_n_acc$fold_train_accuracies[fold] * 100))
-      cat(sprintf("Fold %d Test Accuracy: %.2f%%\n", fold,
-                  pred_n_acc$fold_test_accuracies[fold] * 100))
-    }
+    cat(sprintf("Train: %.1f%%, Test: %.1f%%\n", 
+                pred_n_acc$fold_train_accuracies[fold] * 100, 
+                pred_n_acc$fold_test_accuracies[fold] * 100))
+  } else {
+    cat(sprintf("Fold %d Train Accuracy: %.2f%%\n", fold,
+                pred_n_acc$fold_train_accuracies[fold] * 100))
+    cat(sprintf("Fold %d Test Accuracy: %.2f%%\n", fold,
+                pred_n_acc$fold_test_accuracies[fold] * 100))
+  }
     
   return(pred_n_acc)
 }
