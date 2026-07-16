@@ -26,8 +26,8 @@ The model jointly learns:
 `ClassTopics` is not on CRAN. Install the development version from GitHub:
 
 ```r
-# install.packages("remotes")
-remotes::install_github("jfcarrilho/ClassTopics")
+# install.packages("pak")
+pak::pak("jfcarrilho/ClassTopics")
 ```
 
 ### Stan / cmdstanr setup
