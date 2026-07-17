@@ -1558,7 +1558,7 @@ cv_ClassTopics <- function(
       close(log_con)
     }, add = TRUE)
     
-    ClassTopics(
+    fit <- ClassTopics(
       counts = counts,
       response = response,
       K = K_topics,
@@ -1575,6 +1575,13 @@ cv_ClassTopics <- function(
       control = control,
       ...
     )
+    
+    # Force posterior draws to be read/cached now, while this worker's
+    # CSV output still exists -- any incidental messages from the read
+    # are captured by the sink() above, not the interactive console.
+    invisible(fit$draws())
+    
+    fit
   }, seed = TRUE)
   
   # ---------------------------------------------------------------------
