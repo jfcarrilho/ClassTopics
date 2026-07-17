@@ -1577,8 +1577,8 @@ cv_ClassTopics <- function(
     )
     
     # Force posterior draws to be read/cached now, while this worker's
-    # CSV output still exists -- any incidental messages from the read
-    # are captured by the sink() above, not the interactive console.
+    # CSV output still exists -- any messages from the read are captured
+    # by the sink() above, not the interactive console.
     invisible(fit$draws())
     
     fit
