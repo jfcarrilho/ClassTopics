@@ -46,9 +46,9 @@ transformed data{
   for(d in 1:D){
     N[d] = sum(counts[d,:]);
   }
-  real mean_N = mean(to_vector(N));            // defined here so this
-                                               // particular calculation
-                                               //is performed only once
+  real root_median_N = sqrt(quantile(to_vector(N), 0.5)); // defined here so this
+                                                          // particular calculation
+                                                          //is performed only once
 }
 
 parameters{
@@ -113,11 +113,11 @@ model{
   // use target += and handle the full expression explicitly.
   // ------------------------------------------------------------------
   for(d in 1:D){
-    target += -dot_product(H[d, :], W * rep_vector(1.0, V)) / mean_N;
+    target += -dot_product(H[d, :], W * rep_vector(1.0, V)) / root_median_N;
     for(v in 1:V){
       if (counts[d, v] > 0){
         real lambda_dv = dot_product(H[d, :], W[:, v]);
-        target += counts[d, v] * log(lambda_dv) / mean_N;
+        target += counts[d, v] * log(lambda_dv) / root_median_N;
       }
     }
   }
