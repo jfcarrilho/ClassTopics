@@ -1822,8 +1822,8 @@ ClassTopics_results <- function(fit, true_response,
   
   # Predictions and accuracy
   predictions <- CTtrainpred(
-    predicted_categories = as.factor(response_levels[y_pred_mode]),
-    true_categories = as.factor(true_response),
+    predicted_categories = factor(response_levels[y_pred_mode], levels = response_levels),
+    true_categories = factor(true_response, levels = response_levels),
     prediction_probabilities = response_probs_mean,
     overall_accuracy = accuracy,
     category_accuracy = category_accuracy,
