@@ -1,7 +1,7 @@
 Package: ClassTopics
 Type: Package
 Title: Supervised Topic Models for Binary or Categorical Response Prediction via Stan
-Version: 0.4.3
+Version: 0.4.4
 Authors@R: 
   c(person(
       given = "João F.",

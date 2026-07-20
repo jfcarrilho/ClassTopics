@@ -1812,9 +1812,9 @@ ClassTopics_results <- function(fit, true_response,
   
   # Create confusion matrix
   confusion_matrix <- table(
-    Predicted = response_levels[y_pred_mode],
+    Predicted = factor(response_levels[y_pred_mode], levels = response_levels),
     # Actual = response_levels[actual_responses]
-    Truth = true_response
+    Truth = factor(true_response, levels = response_levels)
   )
   
   # Per-category accuracy
@@ -1822,8 +1822,8 @@ ClassTopics_results <- function(fit, true_response,
   
   # Predictions and accuracy
   predictions <- CTtrainpred(
-    predicted_categories = response_levels[y_pred_mode],
-    true_categories = true_response,
+    predicted_categories = as.factor(response_levels[y_pred_mode]),
+    true_categories = as.factor(true_response),
     prediction_probabilities = response_probs_mean,
     overall_accuracy = accuracy,
     category_accuracy = category_accuracy,
