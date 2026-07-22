@@ -89,18 +89,21 @@ the final model fit on the full dataset.
 }
 \description{
 Runs stratified k-fold cross-validation for the supervised topic model
-fit by \code{\link[=ClassTopics]{ClassTopics()}}, dispatching each fold's fit -- plus one final
-fit on the full dataset -- as concurrent background jobs via the
+fit by \code{\link[=ClassTopics]{ClassTopics()}}, dispatching each fold's fit plus one final
+fit on the full dataset as concurrent background jobs via the
 \code{future} package.
 }
 \details{
-This performs k-fold cross-validation:
-\itemize{
-\item Each patient appears in test set exactly ONCE
-\item Training sets are DISJOINT (no overlap)
-\item Accuracy estimate is UNBIASED
-}
+This function fits a \code{ClassTopics} model using k-fold cross-validation, so
+that we get an unbiased accuracy estimate with each observation appearing in
+test sets only once.
 
 Folds (and the final full-data fit) are run concurrently via
 \code{future::multisession}; the previous \code{future::plan()} is restored on exit.
+
+Returns:
+\itemize{
+\item cv_accuracy: Unbiased estimate of model performance
+\item final_model: Model trained on ALL data (for interpretation)
+}
 }

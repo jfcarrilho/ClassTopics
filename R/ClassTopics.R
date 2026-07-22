@@ -1,5 +1,5 @@
 # =============================================================================
-# Binary or Categorical Topic Modeling -- EM warm-up for Stan initialization
+# Binary or Categorical Topic Modeling - EM warm-up for Stan initialization
 # =============================================================================
 
 #' @param H D x K  initial topic loadings (strictly positive)
@@ -33,26 +33,26 @@
     lambda <- H %*% W
     ratio_obs_est <- X / lambda
     
-    # M-step: theta -- uses H and correction
+    # M-step: theta (uses H and correction)
     nmf_num <- ratio_obs_est %*% t(W)
     nmf_denom <- matrix(rowSums(W), nrow = D, ncol = K, byrow = TRUE)
     
     H_new <- H * (nmf_num / nmf_denom)
     
     if (!all(is.finite(H_new))) {
-      if (verbose) cat(sprintf("Iter %3d | H non-finite -- stopping early\n", iter))
+      if (verbose) cat(sprintf("Iter %3d | Stopping early: H non-finite\n", iter))
       break
     }
     H <- pmax(H_new, FLOOR)
     
     if(!H_only){
-      # M-step: W -- no correction needed
+      # M-step: W (no correction needed)
       W_num <- t(H) %*% ratio_obs_est
       W_denom <- matrix(colSums(H), nrow = K, ncol = V, byrow = FALSE)
       W_new <- W * (W_num / W_denom)
       
       if (!all(is.finite(W_new))) {
-        if (verbose) cat(sprintf("Iter %3d | W non-finite -- stopping early\n", iter))
+        if (verbose) cat(sprintf("Iter %3d | Stopping early: W non-finite\n", iter))
         break
       }
       W <- pmax(W_new, FLOOR)
@@ -76,7 +76,7 @@
 }
 
 # =============================================================================
-# Binary or Categorical NMF-LDA -- Stan model fitting
+# Binary or Categorical NMF-LDA - Stan model fitting
 # =============================================================================
 
 #' Fits a supervised topic model using integrated LDA and NMF to data with
@@ -640,8 +640,6 @@ predict_ClassTopics_EM <- function(
                    max_treedepth = 15),
     ...){
   
-  cat("Worker PID:", Sys.getpid(), "\n")
-  
   set.seed(seed)
   
   response <- as.factor(response)
@@ -667,7 +665,7 @@ predict_ClassTopics_EM <- function(
                          nonzero_train_cols,
                          drop = FALSE]
 
-    # Fit on training fold
+    # Fit on training set
     fit_fold <- ClassTopics(
       counts = train_counts,
       response = response[train_indices],
@@ -705,7 +703,7 @@ predict_ClassTopics_EM <- function(
   y_pred_mode <- posterior::modal_category(draws$y_pred)
   response_probs_mode <- posterior::E(draws$response_probs)
   
-  # Calculate prediction accuracy
+  # Train accuracy
   fold_tr_acc <- mean(response_levels[y_pred_mode] == response[train_indices])
   
   pred_n_acc <- .build_cv_list(
@@ -715,7 +713,7 @@ predict_ClassTopics_EM <- function(
   
   pred_n_acc$fold_train_accuracies[fold] <- fold_tr_acc
   
-  # ADDED: Calculate per-category training accuracy
+  # Class-specific accuracy on train
   train_confusion <- table(
     Predicted = response_levels[y_pred_mode],
     Truth = response[train_indices]
@@ -768,19 +766,19 @@ predict_ClassTopics_EM <- function(
     cat("Predicted!\n")
   }
   
-  # Store test predictions
+  # Test predictions
   pred_n_acc$all_test_predictions[test_indices] <-
     test_pred@predicted_class
   
   pred_n_acc$all_test_pred_probs[test_indices, ] <-
     test_pred@predicted_probs
   
-  # Calculate test accuracy
+  # Test accuracy
   test_response_factor <- factor(response[test_indices], levels = response_levels)
   pred_n_acc$fold_test_accuracies[fold] <- mean(test_pred@predicted_class ==
                                        test_response_factor)
   
-  # Calculate per-category test accuracy
+  # Class-specific accuracy on test
   test_confusion <- table(
     Predicted = test_pred@predicted_class,
     Truth = test_response_factor
@@ -826,10 +824,9 @@ predict_ClassTopics_EM <- function(
 #'         classification results
 #' 
 #' @details
-#' This performs k-fold cross-validation:
-#' - Each patient appears in test set exactly ONCE
-#' - Training sets are DISJOINT (no overlap)
-#' - Accuracy estimate is UNBIASED
+#' This function fits a `ClassTopics` model using k-fold cross-validation, so
+#' that we get an unbiased accuracy estimate with each observation appearing in
+#' test sets only once.
 #' 
 #' Returns:
 #' - \code{cv_accuracy}: Unbiased estimate of model performance
@@ -855,13 +852,14 @@ predict_ClassTopics_EM <- function(
   D <- nrow(counts)
   response_levels <- levels(response)
   C <- length(response_levels)
-  # Calculate overall metrics
+  
+  # Overall accuracy
   all_test_predictions_factor <- factor(pred_n_acc$all_test_predictions,
                                         levels = response_levels)
   overall_test_accuracy <- mean(all_test_predictions_factor == response,
                                 na.rm = TRUE)
   
-  # ADDED: Calculate mean and SD for per-category accuracies
+  # Mean and SD for class-specific accuracy
   mean_test_class_acc <- colMeans(pred_n_acc$fold_test_class_accuracies, na.rm = TRUE)
   sd_test_class_acc <- apply(pred_n_acc$fold_test_class_accuracies, 2, sd, na.rm = TRUE)
   
@@ -895,7 +893,7 @@ predict_ClassTopics_EM <- function(
     cat("  Small gap - model generalizes well\n")
   }
   
-  # Confusion matrix (test)
+  # Confusion matrix on test predictions
   confusion_cv <- table(
     Predicted = all_test_predictions_factor,
     Truth = response
@@ -904,7 +902,7 @@ predict_ClassTopics_EM <- function(
   cat("\nTest Confusion Matrix:\n")
   print(confusion_cv)
   
-  # ADDED: Per-category accuracies with standard deviations
+  # Class-specific accuracies with standard deviations
   cat("\n=== Per-Category Accuracies (Mean and SD across folds) ===\n")
   cat("\nTraining:\n")
   for(i in 1:C){
@@ -923,7 +921,7 @@ predict_ClassTopics_EM <- function(
   }
   
   if(is.null(final_model)){
-    # Fit final model on ALL data for interpretation
+    # Final model on the full dataset for interpretation
     cat("\n=== Fitting Final Model on Full Dataset ===\n")
     cat("(This model is for interpretation; CV accuracy reported above)\n")
     
@@ -942,29 +940,29 @@ predict_ClassTopics_EM <- function(
     # Folds considered in CV
     folds = folds,
     
-    # Training metrics
+    # Train accuracy
     cv_train_accuracy_mean = mean(fold_train_accuracies),
     cv_train_accuracy_sd = sd(fold_train_accuracies),
     fold_train_accuracies = fold_train_accuracies,
     
-    # Test (validation) metrics
+    # Test accuracy
     cv_test_accuracy = overall_test_accuracy,
     cv_test_accuracy_mean = mean(fold_test_accuracies),
     cv_test_accuracy_sd = sd(fold_test_accuracies),
     fold_test_accuracies = fold_test_accuracies,
     cv_test_confusion_matrix = confusion_cv,
     
-    # Per-category metrics (train)
+    # Class-specific accuracy on train
     cv_train_class_accuracy_mean = mean_train_class_acc,
     cv_train_class_accuracy_sd = sd_train_class_acc,
     fold_train_class_accuracies = fold_train_class_accuracies,
     
-    # Per-category metrics (test)
+    # Class-specific accuracy on test
     cv_test_class_accuracy_mean = mean_test_class_acc,
     cv_test_class_accuracy_sd = sd_test_class_acc,
     fold_test_class_accuracies = fold_test_class_accuracies,
     
-    # ADDED: Overfitting assessment
+    # Overfitting assessment
     overfitting_gap = overfit_gap,
     
     # Predictions
@@ -1002,7 +1000,6 @@ predict_ClassTopics_EM <- function(
       fold$all_test_predictions[!is.na(fold$all_test_predictions)]
     
     pred_n_acc$all_test_pred_probs[!is.na(fold$all_test_pred_probs[,1]),] <-
-      #pred_n_acc$all_test_pred_probs +
       fold$all_test_pred_probs[!is.na(fold$all_test_pred_probs[,1]),]
     
     pred_n_acc$fold_test_accuracies <- 
@@ -1058,14 +1055,17 @@ predict_ClassTopics_EM <- function(
 #'         full topic model
 #' 
 #' @details
-#' This performs k-fold cross-validation:
-#' - Each patient appears in test set exactly ONCE
-#' - Training sets are DISJOINT (no overlap)
-#' - Accuracy estimate is UNBIASED
-#' 
+#' This function fits a `ClassTopics` model using k-fold cross-validation, so
+#' that we get an unbiased accuracy estimate with each observation appearing in
+#' test sets only once.
+#'
+#' Folds (and the final full-data fit) are run concurrently via
+#' `future::multisession`; the previous `future::plan()` is restored on exit.
+#'  
 #' Returns:
 #' - cv_accuracy: Unbiased estimate of model performance
 #' - final_model: Model trained on ALL data (for interpretation)
+#' 
 #' @keywords internal
 
 .sequential_cv_ClassTopics <- function(
@@ -1098,7 +1098,7 @@ predict_ClassTopics_EM <- function(
   
   cat(sprintf("\n=== %d-Fold Cross-Validation ===\n", k_folds))
   
-  # Create k-fold splits
+  # Split the data into k stratified folds
   folds <- .create_stratified_folds(response, k_folds)
   
   pred_n_acc <- .build_cv_list(
@@ -1130,7 +1130,7 @@ predict_ClassTopics_EM <- function(
                            nonzero_train_cols,
                            drop = FALSE]
   
-    # Fit on training fold
+    # Fit on training set
     fit_fold <- ClassTopics(
       counts = train_counts,
       response = response[train_indices],
@@ -1164,11 +1164,11 @@ predict_ClassTopics_EM <- function(
     y_pred_mode <- posterior::modal_category(draws$y_pred)
     response_probs_mode <- posterior::E(draws$response_probs)
     
-    # Calculate prediction accuracy
+    # Train accuracy
     fold_tr_acc <- mean(response_levels[y_pred_mode] == response[train_indices])
     pred_n_acc$fold_train_accuracies[fold] <- fold_tr_acc
     
-    # ADDED: Calculate per-category training accuracy
+    # Class-specific accuracy on train
     train_confusion <- table(
       Predicted = response_levels[y_pred_mode],
       Truth = response[train_indices]
@@ -1219,20 +1219,20 @@ predict_ClassTopics_EM <- function(
       cat("Predicted!\n")
     }
     
-    # Store test predictions
+    # Test predictions
     pred_n_acc$all_test_predictions[test_indices] <-
       test_pred@predicted_class
     
     pred_n_acc$all_test_pred_probs[test_indices, ] <-
       test_pred@predicted_probs
     
-    # Calculate test accuracy
+    # Test accuracy
     test_response_factor <- factor(response[test_indices],
                                    levels = response_levels)
     pred_n_acc$fold_test_accuracies[fold] <- mean(test_pred@predicted_class ==
                                                     test_response_factor)
     
-    # Calculate per-category test accuracy
+    # Class-specific accuracy on test
     test_confusion <- table(
       Predicted = test_pred@predicted_class,
       Truth = test_response_factor
@@ -1256,13 +1256,13 @@ predict_ClassTopics_EM <- function(
     }
   }
   
-  # Calculate overall metrics
+  # Overall accuracy
   all_test_predictions_factor <- factor(pred_n_acc$all_test_predictions,
                                         levels = response_levels)
   overall_test_accuracy <- mean(all_test_predictions_factor == response,
                                 na.rm = TRUE)
   
-  # ADDED: Calculate mean and SD for per-category accuracies
+  # Mean and SD for class-specific accuracy
   mean_test_class_acc <- colMeans(pred_n_acc$fold_test_class_accuracies,
                                   na.rm = TRUE)
   sd_test_class_acc <- apply(pred_n_acc$fold_test_class_accuracies, 2, sd,
@@ -1305,7 +1305,7 @@ predict_ClassTopics_EM <- function(
     }
   })
   
-  # Confusion matrix (test)
+  # Confusion matrix on test predictions
   confusion_cv <- table(
     Predicted = all_test_predictions_factor,
     Truth = response
@@ -1314,7 +1314,7 @@ predict_ClassTopics_EM <- function(
   cat("\nTest Confusion Matrix:\n")
   print(confusion_cv)
   
-  # ADDED: Per-category accuracies with standard deviations
+  # Class-specific accuracies with standard deviations
   cat("\n=== Per-Category Accuracies (Mean and SD across folds) ===\n")
   cat("\nTraining:\n")
   for(i in 1:C){
@@ -1332,7 +1332,7 @@ predict_ClassTopics_EM <- function(
                 sd_test_class_acc[i] * 100))
   }
   
-  # Fit final model on ALL data for interpretation
+  # Final model on the full dataset for interpretation
   cat("\n=== Fitting Final Model on Full Dataset ===\n")
   cat("(This model is for interpretation; CV accuracy reported above)\n")
   
@@ -1354,29 +1354,29 @@ predict_ClassTopics_EM <- function(
     # Folds considered in CV
     folds = folds,
     
-    # Training metrics
+    # Train accuracy
     cv_train_accuracy_mean = mean(fold_train_accuracies),
     cv_train_accuracy_sd = sd(fold_train_accuracies),
     fold_train_accuracies = fold_train_accuracies,
     
-    # Test (validation) metrics
+    # Test accuracy
     cv_test_accuracy = overall_test_accuracy,
     cv_test_accuracy_mean = mean(fold_test_accuracies),
     cv_test_accuracy_sd = sd(fold_test_accuracies),
     fold_test_accuracies = fold_test_accuracies,
     cv_test_confusion_matrix = confusion_cv,
     
-    # Per-category metrics (train)
+    # Class-specific accuracy on train
     cv_train_class_accuracy_mean = mean_train_class_acc,
     cv_train_class_accuracy_sd = sd_train_class_acc,
     fold_train_class_accuracies = fold_train_class_accuracies,
     
-    # Per-category metrics (test)
+    # Class-specific accuracy on test
     cv_test_class_accuracy_mean = mean_test_class_acc,
     cv_test_class_accuracy_sd = sd_test_class_acc,
     fold_test_class_accuracies = fold_test_class_accuracies,
     
-    # ADDED: Overfitting assessment
+    # Overfitting assessment
     overfitting_gap = overfit_gap,
     
     # Predictions
@@ -1391,8 +1391,8 @@ predict_ClassTopics_EM <- function(
 #' K-Fold Cross-Validation for ClassTopics Models (Parallel)
 #'
 #' Runs stratified k-fold cross-validation for the supervised topic model
-#' fit by [ClassTopics()], dispatching each fold's fit -- plus one final
-#' fit on the full dataset -- as concurrent background jobs via the
+#' fit by [ClassTopics()], dispatching each fold's fit plus one final
+#' fit on the full dataset as concurrent background jobs via the
 #' `future` package.
 #'
 #' @param counts count matrix
@@ -1431,15 +1431,18 @@ predict_ClassTopics_EM <- function(
 #'   train/test accuracy, per-category accuracy, the pooled test confusion
 #'   matrix, an overfitting diagnostic, pooled out-of-fold predictions, and
 #'   the final model fit on the full dataset.
-#'
+#' 
 #' @details
-#' This performs k-fold cross-validation:
-#' - Each patient appears in test set exactly ONCE
-#' - Training sets are DISJOINT (no overlap)
-#' - Accuracy estimate is UNBIASED
+#' This function fits a `ClassTopics` model using k-fold cross-validation, so
+#' that we get an unbiased accuracy estimate with each observation appearing in
+#' test sets only once.
 #'
 #' Folds (and the final full-data fit) are run concurrently via
 #' `future::multisession`; the previous `future::plan()` is restored on exit.
+#'  
+#' Returns:
+#' - cv_accuracy: Unbiased estimate of model performance
+#' - final_model: Model trained on ALL data (for interpretation)
 #'
 #' @export
 cv_ClassTopics <- function(
@@ -1484,14 +1487,13 @@ cv_ClassTopics <- function(
   # ---------------------------------------------------------------------
   # Each fold is an independent job handled by
   # .cv_ClassTopics_fold_by_fold(), and the final_model fit is another
-  # independent job -- these k_folds + 1 jobs are dispatched concurrently
-  # using the 'future' package. Whatever cmdstan
-  # chains / parallel_chains settings come from '...' or the defaults
-  # inside ClassTopics()/predict_ClassTopics_stan() are passed through
-  # completely untouched -- only the OUTER dispatch (fold jobs + final
-  # model job) is parallelized here. This intentionally allows CPU
-  # oversubscription when (chains per job) x (concurrent jobs) exceeds
-  # the number of available cores.
+  # independent job - these k_folds + 1 jobs are dispatched concurrently
+  # using the 'future' package. Whatever cmdstan chains/parallel_chains
+  # settings come from '...' or the defaults inside
+  # ClassTopics()/predict_ClassTopics_stan() are passed through completely
+  # untouched - only the outer dispatch (fold jobs + final model job) is
+  # parallelized here. This intentionally allows CPU oversubscription when
+  # (chains per job) x (concurrent jobs) exceeds the number of available cores.
   if(!requireNamespace("future", quietly = TRUE)){
     stop("Package 'future' is required to run cv_ClassTopics in parallel. ",
          "Please install it with install.packages('future').")
@@ -1500,16 +1502,16 @@ cv_ClassTopics <- function(
   old_plan <- future::plan()
   on.exit(future::plan(old_plan), add = TRUE)
   
-  # multisession spins up k_folds + 1 background R processes (one per
+  # Multisession spins up k_folds + 1 background R processes (one per
   # fold, plus one for the final_model fit) regardless of how many
-  # physical cores are actually available -- this is deliberate.
+  # physical cores are actually available.
   future::plan(future::multisession, workers = k_folds + 1)
   
   # ---------------------------------------------------------------------
   # Live, fold-tagged progress logging
   # ---------------------------------------------------------------------
   # Every job (each fold + the final model) writes its console output to
-  # its own temp log file AS IT RUNS (via sink() inside the worker). The
+  # its own temp log file as it runs (via sink() inside the worker). The
   # main process polls those files in a loop and streams new lines to
   # the console immediately, prefixed with a job tag, so you get live
   # interleaved progress instead of one big buffered dump per job at the
@@ -1545,8 +1547,8 @@ cv_ClassTopics <- function(
   }
   
   # ---------------------------------------------------------------------
-  # Launch the final_model fit asynchronously (parallel to the folds),
-  # redirecting its console output to its own log file as it runs
+  # Launch the final_model fit parallel to the folds, redirecting its
+  # console output to its own log file as it runs
   # ---------------------------------------------------------------------
   final_model_future <- future::future({
     log_con <- file(final_log_file, open = "wt")
@@ -1577,8 +1579,7 @@ cv_ClassTopics <- function(
     )
     
     # Force posterior draws to be read/cached now, while this worker's
-    # CSV output still exists -- any messages from the read are captured
-    # by the sink() above, not the interactive console.
+    # CSV output still exists
     invisible(fit$draws())
     
     fit
@@ -1656,20 +1657,19 @@ cv_ClassTopics <- function(
   pred_n_acc_list <- lapply(fold_futures, future::value)
   
   # ---------------------------------------------------------------------
-  # Combine the per-fold outputs using the existing aggregation helper
+  # Combine the per-fold outputs using .aggregate_folds()
   # ---------------------------------------------------------------------
   pred_n_acc <- .aggregate_folds(pred_n_acc_list)
   
   # ---------------------------------------------------------------------
   # Resolve the final_model fit that was started in parallel at the top
-  # (fitted concurrently with the fold jobs)
   # ---------------------------------------------------------------------
   cat("\n=== Final Model on Full Dataset fitted (in parallel with folds) ===\n")
   cat("(This model is for interpretation; CV accuracy reported above)\n")
   final_model <- future::value(final_model_future)
   
   # ---------------------------------------------------------------------
-  # Summarize everything using the existing overall-results helper
+  # Summarize everything using .cv_ClassTopics_overall()
   # ---------------------------------------------------------------------
   all_results <- .cv_ClassTopics_overall(
     counts = counts,
@@ -1701,7 +1701,7 @@ ClassTopics_results <- function(fit, true_response,
                                  vars_names = NULL, top_vars = 10, 
                                  credible_interval = 0.95){
   
-  # Calculate posterior summaries
+  # Posterior summaries
   alpha_level <- (1 - credible_interval) / 2
   
   draws <- posterior::as_draws_rvars(fit$draws())
@@ -1769,10 +1769,10 @@ ClassTopics_results <- function(fit, true_response,
     response_probs_mean <- matrix(response_probs_mean[, 1], ncol = 1)
   }
   
-  # Extract topic correlations
+  # Topic correlations
   topic_cors <- posterior::E(draws$topic_correlations)
   
-  # Extract top variables for each topic
+  # Top variables for each topic
   top_vars_list <- list()
   for(k in 1:K){
     top_indices <- order(beta_mean[k, ], decreasing = TRUE)[1:top_vars]
@@ -1813,7 +1813,6 @@ ClassTopics_results <- function(fit, true_response,
   # Create confusion matrix
   confusion_matrix <- table(
     Predicted = factor(response_levels[y_pred_mode], levels = response_levels),
-    # Actual = response_levels[actual_responses]
     Truth = factor(true_response, levels = response_levels)
   )
   
@@ -1872,6 +1871,7 @@ cv_ClassTopics_results <- function(fit, true_response,
                                     vars_names = NULL, top_vars = 10, 
                                     credible_interval = 0.95){
   
+  # ClassTopics_results() on final_model
   final_model_results <- ClassTopics_results(
     fit = fit@final_model,
     true_response = true_response,
