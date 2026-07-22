@@ -957,3 +957,35 @@ setMethod("show", "cvCTresults", function(object) {
   cat("  Credible interval:", object@credible_interval, "\n")
   cat("  CV test accuracy: ", round(object@cv_predictions@cv_test_accuracy, 3), "\n")
 })
+
+setMethod("summary", "cvCTresults", function(object) {
+  cat(sprintf("\nOverfitting Gap: %.2f%%\n", object@cv_predictions@overfitting_gap * 100))
+  if(object@cv_predictions@overfitting_gap > 0.10){
+    cat("  Large gap suggests overfitting - consider regularization\n")
+  } else if(object@cv_predictions@overfitting_gap > 0.05){
+    cat("  Moderate gap - model may be slightly overfitting\n")
+  } else {
+    cat("  Small gap - model generalizes well\n")
+  }
+  
+  cat("\nTest Confusion Matrix:\n")
+  print(object@cv_predictions@cv_test_confusion_matrix)
+  
+  # ADDED: Per-category accuracies with standard deviations
+  cat("\n=== Per-Category Accuracies (Mean and SD across folds) ===\n")
+  cat("\nTraining:\n")
+  for(i in 1:length(object@response_levels)){
+    cat(sprintf("  %s: %.1f%% with SD of %.1f%%\n", 
+                object@response_levels[i],
+                object@cv_predictions@cv_train_class_accuracy_mean[i] * 100,
+                object@cv_predictions@cv_train_class_accuracy_sd[i] * 100))
+  }
+  
+  cat("\nTest (Validation):\n")
+  for(i in 1:length(object@response_levels)){
+    cat(sprintf("  %s: %.1f%% and SD of %.1f%%\n", 
+                object@response_levels[i],
+                object@cv_predictions@cv_test_class_accuracy_mean[i] * 100,
+                object@cv_predictions@cv_test_class_accuracy_sd[i] * 100))
+  }
+})
