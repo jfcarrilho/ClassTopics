@@ -958,6 +958,8 @@ setMethod("show", "cvCTresults", function(object) {
   cat("  CV test accuracy: ", round(object@cv_predictions@cv_test_accuracy, 3), "\n")
 })
 
+#' @rdname cvCTresults-class
+#' @export
 setMethod("summary", "cvCTresults", function(object) {
   cat(sprintf("\nOverfitting Gap: %.2f%%\n", object@cv_predictions@overfitting_gap * 100))
   if(object@cv_predictions@overfitting_gap > 0.10){

@@ -6,6 +6,7 @@
 \alias{getCVPredictions}
 \alias{getCVPredictions,cvCTresults-method}
 \alias{show,cvCTresults-method}
+\alias{summary,cvCTresults-method}
 \title{Class cvCTresults}
 \usage{
 getCVPredictions(x)
@@ -13,6 +14,8 @@ getCVPredictions(x)
 \S4method{getCVPredictions}{cvCTresults}(x)
 
 \S4method{show}{cvCTresults}(object)
+
+\S4method{summary}{cvCTresults}(object)
 }
 \arguments{
 \item{x}{A cvCTresults object.}
