@@ -1995,14 +1995,17 @@ plot_topic_response_heatmap <- function(results, significance_only = FALSE){
 
 #' Plot Top Variables per Topic
 #'
-#' @param results Results from [ClassTopics_results()] or [cv_ClassTopics_results()]
+#' @param results Results from [ClassTopics_results()] or
+#' [cv_ClassTopics_results()]
 #' @param n_vars Integer, number of top vars to show per topic
+#' @param n_cols Integer, number of columns of the grid to plot
 #'
-#' @return A \code{ggplot} object showing the top vars for each topic
+#' @return A \code{ggplot} object showing the variables with highest
+#' proportions for each topic
 #' @importFrom ggplot2 aes
 #' @importFrom rlang .data
 #' @export
-plot_top_vars <- function(results, n_vars = 5){
+plot_top_vars <- function(results, n_vars = 5, n_cols = 2){
   
   # Combine top variables data
   top_vars_df <- do.call(rbind, lapply(names(results@top_vars), function(topic){

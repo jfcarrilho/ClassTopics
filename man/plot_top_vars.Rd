@@ -4,15 +4,19 @@
 \alias{plot_top_vars}
 \title{Plot Top Variables per Topic}
 \usage{
-plot_top_vars(results, n_vars = 5)
+plot_top_vars(results, n_vars = 5, n_cols = 2)
 }
 \arguments{
-\item{results}{Results from \code{\link[=ClassTopics_results]{ClassTopics_results()}} or \code{\link[=cv_ClassTopics_results]{cv_ClassTopics_results()}}}
+\item{results}{Results from \code{\link[=ClassTopics_results]{ClassTopics_results()}} or
+\code{\link[=cv_ClassTopics_results]{cv_ClassTopics_results()}}}
 
 \item{n_vars}{Integer, number of top vars to show per topic}
+
+\item{n_cols}{Integer, number of columns of the grid to plot}
 }
 \value{
-A \code{ggplot} object showing the top vars for each topic
+A \code{ggplot} object showing the variables with highest
+proportions for each topic
 }
 \description{
 Plot Top Variables per Topic
