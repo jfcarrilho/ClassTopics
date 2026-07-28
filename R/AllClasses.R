@@ -961,6 +961,24 @@ setMethod("show", "cvCTresults", function(object) {
 #' @rdname cvCTresults-class
 #' @export
 setMethod("summary", "cvCTresults", function(object) {
+  cat(sprintf("\n=== Cross-Validation Results ===\n"))
+  
+  cat(sprintf("\nTraining Accuracy (per fold):\n"))
+  cat(sprintf("  Mean: %.2f%% with SD of %.2f%%\n", 
+              object@cv_predictions@cv_train_accuracy_mean * 100,
+              object@cv_predictions@cv_train_accuracy_sd * 100))
+  cat(sprintf("  Range: %.2f%% - %.2f%%\n", 
+              min(object@cv_predictions@fold_train_accuracies) * 100,
+              max(object@cv_predictions@fold_train_accuracies) * 100))
+  
+  cat(sprintf("\nTest (Validation) Accuracy (per fold):\n"))
+  cat(sprintf("  Mean: %.2f%% with SD of %.2f%%\n", 
+              object@cv_predictions@cv_test_accuracy_mean * 100,
+              object@cv_predictions@cv_test_accuracy_sd * 100))
+  cat(sprintf("  Range: %.2f%% - %.2f%%\n", 
+              min(object@cv_predictions@fold_test_accuracies) * 100,
+              max(object@cv_predictions@fold_test_accuracies) * 100))
+  
   cat(sprintf("\nOverfitting Gap: %.2f%%\n", object@cv_predictions@overfitting_gap * 100))
   if(object@cv_predictions@overfitting_gap > 0.10){
     cat("  Large gap suggests overfitting - consider regularization\n")
@@ -973,7 +991,6 @@ setMethod("summary", "cvCTresults", function(object) {
   cat("\nTest Confusion Matrix:\n")
   print(object@cv_predictions@cv_test_confusion_matrix)
   
-  # ADDED: Per-category accuracies with standard deviations
   cat("\n=== Per-Category Accuracies (Mean and SD across folds) ===\n")
   cat("\nTraining:\n")
   for(i in 1:length(object@response_levels)){

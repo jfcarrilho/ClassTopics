@@ -875,6 +875,7 @@ predict_ClassTopics_EM <- function(
   with(pred_n_acc, cat(sprintf("  Range: %.2f%% - %.2f%%\n", 
                                min(fold_train_accuracies) * 100, max(fold_train_accuracies) * 100)))
   
+  # Print test accuracy
   cat(sprintf("\nTest (Validation) Accuracy (per fold):\n"))
   with(pred_n_acc, cat(sprintf("  Mean: %.2f%% with SD of %.2f%%\n", 
                                mean(fold_test_accuracies) * 100, sd(fold_test_accuracies) * 100)))
@@ -2021,7 +2022,7 @@ plot_top_vars <- function(results, n_vars = 5, n_cols = 2){
     ggplot2::geom_errorbar(aes(ymin = .data$probability_lower, ymax = .data$probability_upper),
                            width = 0.2, alpha = 0.6) +
     ggplot2::coord_flip() +
-    ggplot2::facet_wrap(~ Topic, scales = "free_y", ncol = 2) +
+    ggplot2::facet_wrap(~ Topic, scales = "free_y", ncol = n_cols) +
     tidytext::scale_x_reordered() +
     ggplot2::theme_minimal() +
     ggplot2::labs(title = "Top Variables per Topic",
