@@ -140,7 +140,7 @@ ClassTopics <- function(counts,
                         chains = 3,
                         cores = 3,
                         seed = 123,
-                        control = list(adapt_delta = 0.90,
+                        control = list(adapt_delta = 0.9,
                                        max_treedepth = 15),
                         verbose = TRUE){
   
@@ -219,7 +219,7 @@ ClassTopics <- function(counts,
   
   cat(sprintf("\n=== Preparing ClassTopics Model with K=%d Topics ===\n", K))
   
-  #### INITIALIZATION WITH EM ####
+  ### INITIALIZATION WITH EM ###
   
   mu_target <- sqrt(mean(counts) / K)
   
@@ -286,15 +286,20 @@ ClassTopics <- function(counts,
   cat(sprintf("\n=== Fitting Model with K=%d ===\n", K))
   cat("This may take a while...\n")
   
-  fit <- mod$sample(
-    data = stan_data,
-    chains = chains,
-    parallel_chains = cores,
-    iter_warmup = iter_warmup,
-    iter_sampling = iter_sampling,
-    init = stan_init,
-    seed = seed
+  sample_args <- c(
+    list(
+      data = stan_data,
+      chains = chains,
+      parallel_chains = cores,
+      iter_warmup = iter_warmup,
+      iter_sampling = iter_sampling,
+      init = stan_init,
+      seed = seed
+      ),
+    control
   )
+  
+  fit <- do.call(mod$sample, sample_args)
   
   cat("\n=== Model fitted! ===\n")
   
@@ -407,7 +412,7 @@ predict_ClassTopics_stan <- function(
     shape = 1,
     cores = 3,
     chains = 3,
-    control = list(adapt_delta = 0.90,
+    control = list(adapt_delta = 0.9,
                    max_treedepth = 15),
     seed = 123,
     iter_warmup = 1000,
@@ -463,15 +468,19 @@ predict_ClassTopics_stan <- function(
   
   mod <- .get_stan_model("model_test")
   
-  fit <- mod$sample(
-    data = stan_data,
-    chains = chains,
-    parallel_chains = cores,   # runs chains truly in parallel
-    iter_warmup = iter_warmup,
-    iter_sampling = iter_sampling,
-    init = stan_init,
-    seed = seed
+  sample_args <- c(
+    list(
+      data = stan_data,
+      chains = chains,
+      parallel_chains = cores,   # runs chains truly in parallel
+      iter_warmup = iter_warmup,
+      iter_sampling = iter_sampling,
+      init = stan_init,
+      seed = seed
+    ),
+    control
   )
+  fit <- do.call(mod$sample, sample_args)
   
   draws <- posterior::as_draws_rvars(fit$draws())
   
@@ -636,7 +645,7 @@ predict_ClassTopics_EM <- function(
     lambda_ridge = 0,
     chains = 3,
     cores = 3,
-    control = list(adapt_delta = 0.90,
+    control = list(adapt_delta = 0.9,
                    max_treedepth = 15),
     ...){
   
@@ -842,7 +851,7 @@ predict_ClassTopics_EM <- function(
     chains = 3,
     cores = 3,
     seed = 123,
-    control = list(adapt_delta = 0.90,
+    control = list(adapt_delta = 0.9,
                    max_treedepth = 15),
     ...){
   
@@ -1466,7 +1475,7 @@ cv_ClassTopics <- function(
     lambda_ridge = 0,
     chains = 3,
     cores = 3,
-    control = list(adapt_delta = 0.90,
+    control = list(adapt_delta = 0.9,
                    max_treedepth = 15),
     ...){
   
