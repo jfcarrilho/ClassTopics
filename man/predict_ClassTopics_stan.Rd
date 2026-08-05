@@ -12,7 +12,7 @@ predict_ClassTopics_stan(
   shape = 1,
   cores = 3,
   chains = 3,
-  control = list(adapt_delta = 0.9, max_treedepth = 15),
+  control = list(adapt_delta = 0.8, max_treedepth = 10),
   seed = 123,
   iter_warmup = 1000,
   iter_sampling = 1000,

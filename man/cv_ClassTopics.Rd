@@ -24,7 +24,7 @@ cv_ClassTopics(
   lambda_ridge = 0,
   chains = 3,
   cores = 3,
-  control = list(adapt_delta = 0.9, max_treedepth = 15),
+  control = list(adapt_delta = 0.8, max_treedepth = 10),
   ...
 )
 }

@@ -21,7 +21,7 @@ ClassTopics(
   chains = 3,
   cores = 3,
   seed = 123,
-  control = list(adapt_delta = 0.9, max_treedepth = 15),
+  control = list(adapt_delta = 0.8, max_treedepth = 10),
   verbose = TRUE
 )
 }

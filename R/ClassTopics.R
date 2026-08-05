@@ -140,8 +140,8 @@ ClassTopics <- function(counts,
                         chains = 3,
                         cores = 3,
                         seed = 123,
-                        control = list(adapt_delta = 0.9,
-                                       max_treedepth = 15),
+                        control = list(adapt_delta = 0.8,
+                                       max_treedepth = 10),
                         verbose = TRUE){
   
   # Input validation
@@ -412,8 +412,8 @@ predict_ClassTopics_stan <- function(
     shape = 1,
     cores = 3,
     chains = 3,
-    control = list(adapt_delta = 0.9,
-                   max_treedepth = 15),
+    control = list(adapt_delta = 0.8,
+                   max_treedepth = 10),
     seed = 123,
     iter_warmup = 1000,
     iter_sampling = 1000,
@@ -645,8 +645,8 @@ predict_ClassTopics_EM <- function(
     lambda_ridge = 0,
     chains = 3,
     cores = 3,
-    control = list(adapt_delta = 0.9,
-                   max_treedepth = 15),
+    control = list(adapt_delta = 0.8,
+                   max_treedepth = 10),
     ...){
   
   set.seed(seed)
@@ -851,8 +851,8 @@ predict_ClassTopics_EM <- function(
     chains = 3,
     cores = 3,
     seed = 123,
-    control = list(adapt_delta = 0.9,
-                   max_treedepth = 15),
+    control = list(adapt_delta = 0.8,
+                   max_treedepth = 10),
     ...){
   
   
@@ -1475,8 +1475,8 @@ cv_ClassTopics <- function(
     lambda_ridge = 0,
     chains = 3,
     cores = 3,
-    control = list(adapt_delta = 0.9,
-                   max_treedepth = 15),
+    control = list(adapt_delta = 0.8,
+                   max_treedepth = 10),
     ...){
   
   set.seed(seed)
