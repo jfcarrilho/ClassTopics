@@ -80,7 +80,7 @@
 # =============================================================================
 
 #' Fits a supervised topic model using integrated LDA and NMF to data with
-#' categorical response variable
+#' binary or categorical response variable
 #' 
 #' @param counts count matrix
 #' @param response character or factor vector on the class labels

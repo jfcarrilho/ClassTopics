@@ -3,7 +3,7 @@
 \name{ClassTopics}
 \alias{ClassTopics}
 \title{Fits a supervised topic model using integrated LDA and NMF to data with
-categorical response variable}
+binary or categorical response variable}
 \usage{
 ClassTopics(
   counts,
@@ -74,7 +74,7 @@ cmdstan model to interpret with the function ClassTopics_results
 }
 \description{
 Fits a supervised topic model using integrated LDA and NMF to data with
-categorical response variable
+binary or categorical response variable
 }
 \details{
 \code{counts} ~ Poisson(\code{lambda}), \code{lambda = H \%*\% W}    (NMF component)
