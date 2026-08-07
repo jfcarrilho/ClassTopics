@@ -1795,7 +1795,11 @@ ClassTopics_results <- function(fit, true_response,
       stringsAsFactors = FALSE
     )
   }
-  names(top_vars_list) <- paste0("Topic_", 1:K)
+  names(top_vars_list) <- paste0(
+    "Topic_",
+    sapply(1:K, function(k)
+      paste(rep("0", nchar(K) - nchar(k)), collapse = "")),
+    1:K)
   
   # Format regression coefficients for interpretation
   if(C == 2){
