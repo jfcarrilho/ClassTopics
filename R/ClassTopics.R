@@ -1811,7 +1811,11 @@ ClassTopics_results <- function(fit, true_response,
   
     regression_results <- expand.grid(
       Category = Category,
-      Topic = paste0("T", 1:K),
+      Topic = paste0(
+        "T",
+        sapply(1:K, function(k)
+          paste(rep("0", nchar(K) - nchar(k)), collapse = "")),
+        1:K),
       stringsAsFactors = FALSE
     )
   
@@ -1947,11 +1951,21 @@ plot_topic_correlations <- function(results){
   
   thres <- 0.15
   
+  K <- ncol(results@theta@mean)
+  
   cor_data <- reshape2::melt(results@topic_correlations)
   cor_data <- dplyr::mutate(
     cor_data,
-    Var1 = paste0("Topic ", .data$Var1),
-    Var2 = paste0("Topic ", .data$Var2),
+    Var1 = paste0(
+      "Topic ",
+      sapply(.data$Var1, function(k)
+        paste(rep("0", nchar(K) - nchar(k)), collapse = "")),
+      .data$Var1),
+    Var2 = paste0(
+      "Topic ",
+      sapply(.data$Var2, function(k)
+        paste(rep("0", nchar(K) - nchar(k)), collapse = "")),
+      .data$Var2),
     value_grid = ifelse(.data$Var1 == .data$Var2, 0, .data$value),
     text = ifelse(.data$Var1 != .data$Var2, sprintf("%.3f", .data$value), "")
   )
