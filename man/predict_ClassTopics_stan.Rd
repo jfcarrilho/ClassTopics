@@ -2,13 +2,14 @@
 % Please edit documentation in R/ClassTopics.R
 \name{predict_ClassTopics_stan}
 \alias{predict_ClassTopics_stan}
-\title{Predict Mixed Memberships and Response for New Observations Given Learned Topics via Stan}
+\title{Predict Mixed Memberships and Response for New Observations Given Learned
+Topics via Stan}
 \usage{
 predict_ClassTopics_stan(
   counts_test,
   W,
   eta,
-  response,
+  response_test,
   shape = 1,
   cores = 3,
   chains = 3,
@@ -27,7 +28,7 @@ predict_ClassTopics_stan(
 
 \item{eta}{Learned regression coefficients \code{C, K}}
 
-\item{response}{Character vector of response categories}
+\item{response_test}{Character vector of response categories of \code{counts_test}}
 
 \item{shape}{scalar prior shape of H (default = 1)}
 
@@ -54,5 +55,37 @@ predict_ClassTopics_stan(
 List with predicted classes and probabilities
 }
 \description{
-Predict Mixed Memberships and Response for New Observations Given Learned Topics via Stan
+Predict Mixed Memberships and Response for New Observations Given Learned
+Topics via Stan
+}
+\examples{
+
+## Generate synthetic dataset
+
+df <- generate_CTdata(D_per_class = 200)
+
+# Remove zero-count columns
+zero_cols <- colSums(df@X) == 0
+X <- df@X[, !zero_cols, drop = FALSE]
+
+# Leave 50 observations of each class out of the training set
+test_ids <- rep(c(0, 200, 400), each = 50) + rep(1:50, 3)
+X_train <- X[-test_ids, ]
+Y_train <- df@Y[-test_ids]
+X_test <- X[test_ids, ]
+Y_test <- df@Y[test_ids]
+
+# Model fitting
+\donttest{
+fit <- ClassTopics(counts = X_train, response = Y_train)
+
+# Posterior results extraction
+results <- ClassTopics_results(fit = fit, true_response = Y_train)
+
+# Predict on test set
+pred_test <- predict_ClassTopics_stan(
+    counts_test = X_test,
+    response_test = Y_test)
+}
+
 }

@@ -33,11 +33,12 @@ combines two components, estimated jointly:
 
 Estimation is done with full Bayesian inference in
 [Stan](https://mc-stan.org/), via
-[`cmdstanr`](https://mc-stan.org/cmdstanr/). An EM warm-start initializes
+[`rstan`](https://mc-stan.org/rstan/). An EM warm-start initializes
 the sampler for faster, more stable convergence.
 
 This vignette walks through:
 
+- generating a count dataset with `generate_CTdata()`
 - fitting a model with `ClassTopics()`
 - interpreting the result with `ClassTopics_results()`
 - diagnostic plots
@@ -50,62 +51,59 @@ This vignette walks through:
 library(ClassTopics)
 ```
 
-`ClassTopics` requires a working `cmdstanr` installation. If you haven't
-set this up yet:
+## Generating example data
 
-```{r cmdstan-setup}
-install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
-cmdstanr::install_cmdstan()
-```
-
-This is a one-time setup per machine. The Stan models bundled with
-`ClassTopics` are compiled automatically the first time you call a fitting
-function, and the compiled executables are cached and reused afterwards.
-
-## Simulating example data
-
-To keep this vignette self-contained, we simulate a small gene-count
+To keep this vignette self-contained, we simulate, for instance, a small gene-count
 dataset with a categorical response driven by three latent topics.
+
+## Generating count data
+
+To keep this vignette self-contained, we generate, for instance, a small count
+dataset with a 3-level categorical response driven by five latent topics using
+`generate_CTdata()`.
 
 ```{r simulate-data}
 set.seed(123)
 
-D <- 120   # number of patients
-V <- 60    # number of genes
-K <- 6     # true number of topics
-C <- 3     # number of response categories
+C <- 3                         # Number of classes
+eta <- matrix(rnorm(15), C, 5) # Topic-response matrix
 
-# Simulate topic-gene profiles (beta) and patient topic proportions (theta)
-true_beta  <- matrix(rgamma(K * V, shape = 2, rate = 2), nrow = K, ncol = V)
-true_theta <- matrix(rgamma(D * K, shape = 2, rate = 2), nrow = D, ncol = K)
-true_theta <- true_theta / rowSums(true_theta)
+D_per_class <- 50              # Number of observations per class
+V <- 60                        # Number of variables
+alpha_w <- 0.05                # Controls data sparsity
+lambda <- 1e7                  # Magnitude of the dataset
+class_spread <- 0.6            # Controls levels of class separation
+seed <- 123
 
-# Simulate gene counts: Poisson NMF
-lambda <- true_theta %*% true_beta * 200
-gene_counts <- matrix(
-  rpois(D * V, lambda = as.vector(lambda)),
-  nrow = D, ncol = V
-)
-colnames(gene_counts) <- paste0("gene_", seq_len(V))
+# Data simulation
+df <- generate_CTdata(
+  D_per_class = D_per_class,
+  V = V,
+  eta = eta,
+  alpha_w = alpha_w,
+  lambda = lambda, 
+  class_spread = class_spread,
+  seed = seed)
 
-# Simulate a response driven by the topic proportions
-true_eta <- matrix(rnorm(C * K, sd = 2), nrow = C, ncol = K)
-linear_pred <- true_theta %*% t(true_eta)
-probs <- exp(linear_pred) / rowSums(exp(linear_pred))
-response <- factor(
-  apply(probs, 1, function(p) sample(seq_len(C), size = 1, prob = p)),
-  labels = c("A", "B", "C")
-)
+tpc <- 10                      # Number of test observations per class
 
-table(response)
+test_ids <-
+  rep(D_per_class * 0:(C-1), each = tpc) +
+  rep((D_per_class-tpc+1):D_per_class, C)
+
+gene_counts_train <- df@X[-test_ids, ]
+response_train <- df@Y[-test_ids]
+
+gene_counts_test <- df@X[test_ids, ]
+response_test <- df@Y[test_ids]
 ```
 
 ## Fitting a model
 
 ```{r fit}
 fit <- ClassTopics(
-  counts        = gene_counts,
-  response      = response,
+  counts        = gene_counts_train,
+  response      = response_train,
   K             = 3,
   betadir       = TRUE,
   seed          = 123,
@@ -116,7 +114,7 @@ fit <- ClassTopics(
 )
 ```
 
-`ClassTopics()` returns a compiled and fitted `cmdstanr` `CmdStanMCMC`
+`ClassTopics()` returns a compiled and fitted `rstan`
 object. Use `ClassTopics_results()` to turn this into an interpretable,
 structured `CTresults` object.
 
@@ -125,8 +123,8 @@ structured `CTresults` object.
 ```{r results}
 results <- ClassTopics_results(
   fit               = fit,
-  true_response     = response,
-  vars_names        = colnames(gene_counts),
+  true_response     = response_train,
+  vars_names        = colnames(gene_counts_train),
   top_vars          = 10,
   credible_interval = 0.95
 )
@@ -166,8 +164,8 @@ the `future` package:
 
 ```{r cv}
 cv_fit <- cv_ClassTopics(
-  counts        = gene_counts,
-  response      = response,
+  counts        = gene_counts_train,
+  response      = response_train,
   k_folds       = 5,
   K_topics      = 3,
   betadir       = TRUE,
@@ -200,7 +198,7 @@ returned by `ClassTopics()`, and can be summarized the same way:
 ```{r cv-final-model}
 cv_results <- ClassTopics_results(
   fit = cv_fit@final_model,
-  true_response = response,
+  true_response = response_train,
   vars_names = colnames(gene_counts)
 )
 ```
@@ -227,33 +225,31 @@ W   <- paramMean(results@beta)
 eta <- paramMean(results@eta)
 
 test_pred <- predict_ClassTopics_stan(
-  counts_test = gene_counts_new,  # a D_test x V matrix, same variables/order
+  counts_test = gene_counts_test, 
   W = W,
   eta = eta,
-  mu_target = sqrt(mean(gene_counts) / nrow(W)),
-  response = response,   # original training response factor (its levels
-                         # define the prediction categories)
+  response_test = response_test,
   seed = 123
 )
 
-test_pred$predicted_class
-test_pred$predicted_probs
+test_pred@predicted_class
+test_pred@predicted_probs
 ```
 
 ```{r predict-em}
 test_pred_em <- predict_ClassTopics_EM(
-  counts_test = gene_counts_new,
+  counts_test = gene_counts_test,
   W = W,
   eta = eta,
-  mu_target = sqrt(mean(gene_counts) / nrow(W)),
-  response = response
+  response_test = response_test
 )
 
-test_pred_em$predicted_class
+test_pred_em@predicted_class
 ```
 
 ## Summary
 
+- `generate_CTdata()` generates synthetic count datasets.
 - `ClassTopics()` fits the joint NMF + supervised topic model via Stan.
 - `ClassTopics_results()` turns a raw fit into an interpretable `CTresults`
   object, with accessors for predictions, coefficients, and top variables.

@@ -9,7 +9,7 @@ expression) jointly with a binary or categorical response. It combines
 non-negative matrix factorization (NMF) with a supervised latent Dirichlet
 allocation (LDA)-style reparameterization, estimated via full Bayesian
 inference in [Stan](https://mc-stan.org/) (through
-[`cmdstanr`](https://mc-stan.org/cmdstanr/)), with an EM warm-start used to
+[`rstan`](https://mc-stan.org/rstan/)), with an EM warm-start used to
 initialize the sampler.
 
 The model jointly learns:
@@ -26,24 +26,9 @@ The model jointly learns:
 `ClassTopics` is not on CRAN. Install the development version from GitHub:
 
 ```r
-# install.packages("pak")
-pak::pak("jfcarrilho/ClassTopics")
+# install.packages("remotes")
+remotes::install_github("jfcarrilho/ClassTopics")
 ```
-
-### Stan / cmdstanr setup
-
-`ClassTopics` fits its models with [`cmdstanr`](https://mc-stan.org/cmdstanr/),
-which is not on CRAN and must be installed separately:
-
-```r
-install.packages("cmdstanr", repos = c("https://mc-stan.org/r-packages/", getOption("repos")))
-cmdstanr::install_cmdstan()
-```
-
-You only need to do this once per machine. The first time you call any
-`ClassTopics` fitting function, the package's bundled Stan models are
-compiled automatically and the resulting executables are cached for reuse
-on subsequent calls -- you do not need to compile anything by hand.
 
 ## Quick example
 

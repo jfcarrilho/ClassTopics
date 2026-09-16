@@ -29,3 +29,18 @@ List containing all results and interpretations
 \description{
 Extract and Interpret ClassTopics Model Results after cross-validation
 }
+\examples{
+
+## Generate synthetic dataset
+
+df <- generate_CTdata()
+
+# Model fitting
+\donttest{
+fit <- cv_ClassTopics(counts = df@X, response = df@Y)
+
+# Posterior results extraction
+results <- cv_ClassTopics_results(fit = fit, true_response = df@Y)
+}
+
+}

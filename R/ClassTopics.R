@@ -124,6 +124,24 @@
 #'   \code{theta} : D x K  -- topic proportions per observation
 #'   \code{beta}  : K x V  -- variable distributions per topic
 #'
+#' @examples
+#' 
+#' ## Generate synthetic dataset
+#' 
+#' df <- generate_CTdata()
+#' 
+#' # Remove zero-count columns
+#' zero_cols <- colSums(df@X) == 0
+#' X <- df@X[, !zero_cols, drop = FALSE]
+#' 
+#' # Model fitting
+#' \donttest{
+#' fit <- ClassTopics(counts = X, response = df@Y)
+#' 
+#' # Posterior results extraction
+#' results <- ClassTopics_results(fit = fit, true_response = df@Y)
+#' }
+#'
 #' @export
 ClassTopics <- function(counts,
                         response,
@@ -374,12 +392,13 @@ ClassTopics <- function(counts,
 # PREDICTION FUNCTION
 # ==============================================================================
 
-#' Predict Mixed Memberships and Response for New Observations Given Learned Topics via Stan
+#' Predict Mixed Memberships and Response for New Observations Given Learned
+#' Topics via Stan
 #'
 #' @param counts_test Matrix of counts
 #' @param W Learned topic-variable loadings \code{K, V}
 #' @param eta Learned regression coefficients \code{C, K}
-#' @param response Character vector of response categories
+#' @param response_test Character vector of response categories of `counts_test`
 #' @param shape scalar prior shape of H (default = 1)
 #' @param cores number of CPU cores to use (default = \code{3})
 #' @param chains number of chains to run (default = \code{3})
@@ -394,12 +413,43 @@ ClassTopics <- function(counts,
 #'                (default = \code{TRUE})
 #'
 #' @return List with predicted classes and probabilities
+#' 
+#' @examples
+#' 
+#' ## Generate synthetic dataset
+#' 
+#' df <- generate_CTdata(D_per_class = 200)
+#' 
+#' # Remove zero-count columns
+#' zero_cols <- colSums(df@X) == 0
+#' X <- df@X[, !zero_cols, drop = FALSE]
+#' 
+#' # Leave 50 observations of each class out of the training set
+#' test_ids <- rep(c(0, 200, 400), each = 50) + rep(1:50, 3)
+#' X_train <- X[-test_ids, ]
+#' Y_train <- df@Y[-test_ids]
+#' X_test <- X[test_ids, ]
+#' Y_test <- df@Y[test_ids]
+#' 
+#' # Model fitting
+#' \donttest{
+#' fit <- ClassTopics(counts = X_train, response = Y_train)
+#' 
+#' # Posterior results extraction
+#' results <- ClassTopics_results(fit = fit, true_response = Y_train)
+#'
+#' # Predict on test set
+#' pred_test <- predict_ClassTopics_stan(
+#'     counts_test = X_test,
+#'     response_test = Y_test)
+#' }
+#' 
 #' @export
 predict_ClassTopics_stan <- function(
     counts_test,
     W,
     eta,
-    response,
+    response_test,
     shape = 1,
     cores = 3,
     chains = 3,
@@ -415,7 +465,7 @@ predict_ClassTopics_stan <- function(
   V <- ncol(W)
   K <- nrow(W)
   C <- nrow(eta)
-  response_levels <- levels(response)
+  response_levels <- levels(response_test)
   
   if(C == 1){
     C <- 2
@@ -448,7 +498,7 @@ predict_ClassTopics_stan <- function(
     D = D,
     counts = counts_test,
     C = C,
-    y = as.integer(response),
+    y = as.integer(response_test),
     shape = shape,
     rate = rate,
     W = W,
@@ -489,24 +539,56 @@ predict_ClassTopics_stan <- function(
   ))
 }
 
-#' Predict Mixed Memberships and Response for New Patients Given Learned Topics via EM only
+#' Predict Mixed Memberships and Response for New Observations Given Learned
+#' Topics via EM only
 #'
 #' @param counts_test Matrix of counts
 #' @param W Learned topic-variable loadings \code{K, V}
 #' @param eta Learned regression coefficients \code{C, K}
-#' @param response Character vector of response categories
+#' @param response_test Character vector of response categories of `counts_test`
 #' @param shape scalar prior shape of H (default = 1)
 #' @param n_iter_EM Number of required EM iterations
 #' @param verbose logical that controls whether EM likelihood is printed
 #'                (default = \code{TRUE})
 #'
 #' @return List with predicted classes and probabilities
+#' 
+#' @examples
+#' 
+#' ## Generate synthetic dataset
+#' 
+#' df <- generate_CTdata(D_per_class = 200)
+#' 
+#' # Remove zero-count columns
+#' zero_cols <- colSums(df@X) == 0
+#' X <- df@X[, !zero_cols, drop = FALSE]
+#' 
+#' # Leave 50 observations of each class out of the training set
+#' test_ids <- c(0, 200, 400) + 1:50
+#' X_train <- X[-test_ids, ]
+#' Y_train <- df@Y[-test_ids]
+#' X_test <- X[test_ids, ]
+#' Y_test <- df@Y[test_ids]
+#' 
+#' # Model fitting
+#' \donttest{
+#' fit <- ClassTopics(counts = X_train, response = Y_train)
+#' 
+#' # Posterior results extraction
+#' results <- ClassTopics_results(fit = fit, true_response = Y_train)
+#'
+#' # Predict on test set
+#' pred_test <- predict_ClassTopics_EM(
+#'     counts_test = X_test,
+#'     response_test = Y_test)
+#' }
+#' 
 #' @export
 predict_ClassTopics_EM <- function(
     counts_test,
     W,
     eta,
-    response,
+    response_test,
     shape = 1,
     n_iter_EM = 4,
     verbose = TRUE
@@ -516,7 +598,7 @@ predict_ClassTopics_EM <- function(
   V <- ncol(W)
   K <- nrow(W)
   C <- nrow(eta)
-  response_levels <- levels(response)
+  response_levels <- levels(response_test)
   
   if(C == 1){
     C <- 2
@@ -739,7 +821,7 @@ predict_ClassTopics_EM <- function(
                            drop = FALSE],
       W = W_pred,
       eta = eta_fold,
-      response = response[test_indices],
+      response_test = response[test_indices],
       shape = shape_test,
       seed = seed,
       iter_warmup = iter_warmup,
@@ -758,7 +840,7 @@ predict_ClassTopics_EM <- function(
       W = W_pred,
       eta = eta_fold,
       shape = shape_test,
-      response = response[test_indices],
+      response_test = response[test_indices],
       n_iter_EM = n_iter_EM_test
     )
   }
@@ -1179,7 +1261,7 @@ predict_ClassTopics_EM <- function(
                              drop = FALSE],
         W = W_pred,
         eta = eta_fold,
-        response = response[test_indices],
+        response_test = response[test_indices],
         shape = shape_test,
         seed = seed,
         iter_warmup = iter_warmup,
@@ -1196,7 +1278,7 @@ predict_ClassTopics_EM <- function(
         W = W_pred,
         eta = eta_fold,
         shape = shape_test,
-        response = response[test_indices],
+        response_test = response[test_indices],
         n_iter_EM = n_iter_EM_test
       )
     }
@@ -1436,6 +1518,24 @@ predict_ClassTopics_EM <- function(
 #' - cv_accuracy: Unbiased estimate of model performance
 #' - final_model: Model trained on ALL data (for interpretation)
 #'
+#' @examples
+#' 
+#' ## Generate synthetic dataset
+#' 
+#' df <- generate_CTdata()
+#' 
+#' # Remove zero-count columns
+#' zero_cols <- colSums(df@X) == 0
+#' X <- df@X[, !zero_cols, drop = FALSE]
+#' 
+#' # Model fitting
+#' \donttest{
+#' fit <- cv_ClassTopics(counts = X, response = df@Y)
+#' 
+#' # Posterior results extraction
+#' results <- cv_ClassTopics_results(fit = fit, true_response = df@Y)
+#' }
+#' 
 #' @export
 cv_ClassTopics <- function(
     counts,
@@ -1684,6 +1784,26 @@ cv_ClassTopics <- function(
 #' @param credible_interval Numeric, credible interval width (default: \code{0.95})
 #'
 #' @return List containing all results and interpretations
+#' 
+#' @examples
+#' 
+#' ## Generate synthetic dataset
+#' 
+#' df <- generate_CTdata()
+#' 
+#' # Remove zero-count columns
+#' zero_cols <- colSums(df@X) == 0
+#' X <- df@X[, !zero_cols, drop = FALSE]
+#' 
+#' # Model fitting
+#' \donttest{
+#' fit <- ClassTopics(counts = X, response = df@Y)
+#' 
+#' # Posterior results extraction
+#' results <- ClassTopics_results(fit = fit, true_response = df@Y)
+#' 
+#' }
+#' 
 #' @export
 ClassTopics_results <- function(fit, true_response,
                                  vars_names = NULL, top_vars = 10, 
@@ -1865,8 +1985,22 @@ ClassTopics_results <- function(fit, true_response,
 #' @param credible_interval Numeric, credible interval width (default: \code{0.95})
 #'
 #' @return List containing all results and interpretations
+#'
+#' @examples
+#' 
+#' ## Generate synthetic dataset
+#' 
+#' df <- generate_CTdata()
+#' 
+#' # Model fitting
+#' \donttest{
+#' fit <- cv_ClassTopics(counts = df@X, response = df@Y)
+#' 
+#' # Posterior results extraction
+#' results <- cv_ClassTopics_results(fit = fit, true_response = df@Y)
+#' }
+#'
 #' @export
-
 cv_ClassTopics_results <- function(fit, true_response,
                                     vars_names = NULL, top_vars = 10, 
                                     credible_interval = 0.95){
@@ -1928,6 +2062,26 @@ cv_ClassTopics_results <- function(fit, true_response,
 #' @return A \code{ggplot} object showing a heatmap of topic correlations
 #' @importFrom ggplot2 aes
 #' @importFrom rlang .data
+#' 
+#' @examples
+#' 
+#' df <- generate_CTdata()
+#' 
+#' # Remove zero-count columns
+#' zero_cols <- colSums(df@X) == 0
+#' X <- df@X[, !zero_cols, drop = FALSE]
+#' 
+#' # Model fitting
+#' \donttest{
+#' fit <- ClassTopics(counts = X, response = df@Y)
+#' 
+#' # Posterior results extraction
+#' results <- ClassTopics_results(fit = fit, true_response = df@Y)
+#' 
+#' # Plot topic correlations
+#' plot_topic_correlations(results)
+#' }
+#' 
 #' @export
 plot_topic_correlations <- function(results){
   
@@ -1974,6 +2128,26 @@ plot_topic_correlations <- function(results){
 #' @return A \code{ggplot} object showing a heatmap of topic-response coefficients
 #' @importFrom ggplot2 aes
 #' @importFrom rlang .data
+#' 
+#' @examples
+#' 
+#' df <- generate_CTdata()
+#' 
+#' # Remove zero-count columns
+#' zero_cols <- colSums(df@X) == 0
+#' X <- df@X[, !zero_cols, drop = FALSE]
+#' 
+#' # Model fitting
+#' \donttest{
+#' fit <- ClassTopics(counts = X, response = df@Y)
+#' 
+#' # Posterior results extraction
+#' results <- ClassTopics_results(fit = fit, true_response = df@Y)
+#' 
+#' # Plot topic response heatmap
+#' plot_topic_response_heatmap(results)
+#' }
+#' 
 #' @export
 plot_topic_response_heatmap <- function(results, significance_only = FALSE){
   
@@ -2014,6 +2188,26 @@ plot_topic_response_heatmap <- function(results, significance_only = FALSE){
 #' proportions for each topic
 #' @importFrom ggplot2 aes
 #' @importFrom rlang .data
+#' 
+#' @examples
+#' 
+#' df <- generate_CTdata()
+#' 
+#' # Remove zero-count columns
+#' zero_cols <- colSums(df@X) == 0
+#' X <- df@X[, !zero_cols, drop = FALSE]
+#' 
+#' # Model fitting
+#' \donttest{
+#' fit <- ClassTopics(counts = X, response = df@Y)
+#' 
+#' # Posterior results extraction
+#' results <- ClassTopics_results(fit = fit, true_response = df@Y)
+#' 
+#' # Plot top 7 variables, organized in 3 columns
+#' plot_top_vars(results, n_vars = 7, n_cols = 3)
+#' }
+#' 
 #' @export
 plot_top_vars <- function(results, n_vars = 5, n_cols = 2){
   

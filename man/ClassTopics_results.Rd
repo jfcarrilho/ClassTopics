@@ -29,3 +29,23 @@ List containing all results and interpretations
 \description{
 Extract and Interpret Supervised Topic Modeling Results
 }
+\examples{
+
+## Generate synthetic dataset
+
+df <- generate_CTdata()
+
+# Remove zero-count columns
+zero_cols <- colSums(df@X) == 0
+X <- df@X[, !zero_cols, drop = FALSE]
+
+# Model fitting
+\donttest{
+fit <- ClassTopics(counts = X, response = df@Y)
+
+# Posterior results extraction
+results <- ClassTopics_results(fit = fit, true_response = df@Y)
+
+}
+
+}

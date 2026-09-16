@@ -107,3 +107,22 @@ Returns:
 \item final_model: Model trained on ALL data (for interpretation)
 }
 }
+\examples{
+
+## Generate synthetic dataset
+
+df <- generate_CTdata()
+
+# Remove zero-count columns
+zero_cols <- colSums(df@X) == 0
+X <- df@X[, !zero_cols, drop = FALSE]
+
+# Model fitting
+\donttest{
+fit <- cv_ClassTopics(counts = X, response = df@Y)
+
+# Posterior results extraction
+results <- cv_ClassTopics_results(fit = fit, true_response = df@Y)
+}
+
+}
