@@ -89,7 +89,7 @@ model{
   // Priors
   // ------------------------------------------------------------------
   for(d in 1:D){
-    H[d, :] ~ gamma(shape, rate);
+    H[d, :] ~ gamma(shape, shape * rate);
   }
   
   for(k in 1:K){

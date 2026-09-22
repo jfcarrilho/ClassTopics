@@ -3,15 +3,15 @@
 // =============================================================================
 //
 // Generative model:
-//   H[d, k] ~ Gamma(shape, rate)           // topic loadings per observation
+//   H[d, k] ~ Gamma(shape, shape * rate)   // topic loadings per observation
 //   W[k, v] ~ Gamma(shape, rate)           // variable weights per topic
-//   eta[c, k]   ~ Normal(0, sigma_eta)         // class-topic regression weights
+//   eta[c, k]   ~ Normal(0, sigma_eta)     // class-topic regression weights
 //
 //   lambda[d, v]  = dot_product(H[d,:], W[:,v])   // Poisson rate
 //   counts[d, v] ~ Poisson(lambda[d, v])            // NMF likelihood
 //
 //   linear_pred[d, c] = eta[c,:] * theta[d,:]'
-//   y[d] ~ Categorical(softmax(linear_pred[d]))          // supervised likelihood
+//   y[d] ~ Categorical(softmax(linear_pred[d]))     // supervised likelihood
 //
 // Identifiability:
 //   - H and W are non-negative; their product defines the Poisson rate
@@ -31,8 +31,9 @@ data{
   array[D] int<lower=1, upper=C> y;            // class label for each patient
 
   // Hyperparameters
-  real<lower=0> shape;                         // Gamma prior shape for H, W
+  real<lower=0> shape;                         // Gamma prior shape for H
   real<lower=0> rate;                          // Gamma prior rate  for H, W
+  real<lower=0> alpha_beta;                    // Gamma prior shape for W
   real<lower=0> sigma_eta;                     // Normal prior SD for eta
 }
 
@@ -102,11 +103,11 @@ model{
   // Priors
   // ------------------------------------------------------------------
   for(d in 1:D){
-    H[d, :] ~ gamma(shape, rate);
+    H[d, :] ~ gamma(shape, shape * rate);
   }
   
   for(k in 1:K){
-    W[k, :]  ~ gamma(shape, rate);
+    W[k, :]  ~ gamma(alpha_beta, rate);
   }
   
   for(c in 1:C){

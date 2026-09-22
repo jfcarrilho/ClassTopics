@@ -30,8 +30,8 @@ data{
   array[D] int<lower=1, upper=C> y;            // class label for each patient
 
   // Hyperparameters
-  real<lower=0> shape;                         // Gamma prior shape for theta
-  real<lower=0> rate;                          // Gamma prior rate for theta
+  real<lower=0> shape;                         // Gamma prior shape for H
+  real<lower=0> rate;                          // Gamma prior rate for H
   
   matrix<lower=0>[K, V] W;                     // variable-topic weights:  K x V
   matrix[C, K]          eta;                   // class-topic weights: C x K
