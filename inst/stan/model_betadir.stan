@@ -96,7 +96,7 @@ model{
     beta[k] ~ dirichlet(rep_vector(alpha_beta, V));
   }
   
-  u ~ gamma(shape, rate);
+  u ~ gamma(V * alpha_beta, rate);
   
   for(c in 1:C){
     // Prior on eta_raw is standard normal — well-conditioned geometry
