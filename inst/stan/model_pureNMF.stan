@@ -44,13 +44,15 @@ transformed data{
   }
   real root_median_N = sqrt(quantile(to_vector(N), 0.5)); // defined here so this
                                                           // particular calculation
-                                                          //is performed only once
+                                                          // is performed only once
+
+  real<lower=0> lambda_ridge_eta;              // L2 penalty on eta
 }
 
 parameters{
-  matrix<lower=0>[D, K] H;                 // topic loadings:      D x K
-  matrix<lower=0>[K, V] W;                 // variable-topic weights:  K x V
-  matrix[C, K]          eta_raw;               // class-topic weights: C x K
+  matrix<lower=0>[D, K] H;                 // topic loadings: D x K
+  matrix<lower=0>[K, V] W;                 // variable-topic weights: K x V
+  matrix[C, K] eta_raw;                    // class-topic weights: C x K
 }
 
 transformed parameters{
@@ -107,13 +109,16 @@ model{
   }
   
   for(k in 1:K){
-    W[k, :]  ~ gamma(alpha_beta, rate);
+    W[k, :] ~ gamma(alpha_beta, rate);
   }
   
   for(c in 1:C){
     // Prior on eta_raw is standard normal — well-conditioned geometry
     eta_raw[c, :] ~ normal(0, 1);
   }
+  
+  // Ridge on scaled eta (additional shrinkage beyond the sigma_eta scaling)
+  target += -0.5 * lambda_ridge_eta * sum(eta .* eta);
 
   // ------------------------------------------------------------------
   // NMF likelihood: Poisson with rate = H * W
@@ -148,7 +153,7 @@ generated quantities{
   // ------------------------------------------------------------------
   // Log-likelihoods (for model comparison, LOO-CV, etc.)
   // ------------------------------------------------------------------
-  real var_log_lik     = 0;
+  real var_log_lik = 0;
   real response_log_lik = 0;
   real total_log_lik;
 
@@ -156,7 +161,7 @@ generated quantities{
   // Posterior predictive
   // ------------------------------------------------------------------
   array[D] int<lower=1, upper=C> y_pred;
-  array[D] vector[C]             response_probs;
+  array[D] vector[C] response_probs;
 
   // NMF log-likelihood (sparse: skip zero counts still accounting for -lambda)
   for(d in 1:D){
@@ -175,16 +180,16 @@ generated quantities{
     for(c in 1:C){
       linear_pred[c] = dot_product(eta[c, :], theta[d, :]);
     }
-    response_probs[d]  = softmax(linear_pred);
-    y_pred[d]          = categorical_logit_rng(linear_pred);
-    response_log_lik  += categorical_logit_lpmf(y[d] | linear_pred);
+    response_probs[d] = softmax(linear_pred);
+    y_pred[d] = categorical_logit_rng(linear_pred);
+    response_log_lik += categorical_logit_lpmf(y[d] | linear_pred);
   }
 
   total_log_lik = var_log_lik + response_log_lik;
 
   // ------------------------------------------------------------------
   // Topic correlations (diagnostic: are topics distinguishable?)
-  // Uses beta_norm so scale differences don't dominate correlation.
+  // Uses beta so scale differences don't dominate correlation.
   // ------------------------------------------------------------------
   matrix[K, K] topic_correlations;
   for(k1 in 1:K){
@@ -196,9 +201,9 @@ generated quantities{
         real mean2 = mean(beta[k2, :]);
         vector[V] dev1 = beta[k1, :]' - mean1;
         vector[V] dev2 = beta[k2, :]' - mean2;
-        real cov12     = dot_product(dev1, dev2);
-        real var1      = dot_self(dev1);
-        real var2      = dot_self(dev2);
+        real cov12 = dot_product(dev1, dev2);
+        real var1 = dot_self(dev1);
+        real var2 = dot_self(dev2);
         topic_correlations[k1, k2] = cov12 / (sqrt(var1) * sqrt(var2));
       }
     }

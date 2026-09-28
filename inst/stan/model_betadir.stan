@@ -3,7 +3,7 @@
 // =============================================================================
 //
 // Generative model:
-//   H[d, k] ~ Gamma(shape, rate)          // topic loadings per observation
+//   H[d, k] ~ Gamma(shape, shape * rate)  // topic loadings per observation
 //   beta[k, v]  ~ Dirichlet(alpha_beta)   // variable weights per topic
 //   eta[c, k]   ~ Normal(0, sigma_eta)    // class-topic regression weights
 //
@@ -48,14 +48,14 @@ transformed data{
   }
   real root_median_N = sqrt(quantile(to_vector(N), 0.5)); // defined here so this
                                                           // particular calculation
-                                                          //is performed only once
+                                                          // is performed only once
 }
 
 parameters{
-  matrix<lower=0>[D, K] H;            // topic loadings:          D x K
-  array[K] simplex[V] beta;           // variable-topic weights:  K x V
+  matrix<lower=0>[D, K] H;            // topic loadings: D x K
+  array[K] simplex[V] beta;           // variable-topic weights: K x V
   vector<lower=0>[K] u;               // overall magnitude of each topic
-  matrix[C, K] eta_raw;               // class-topic weights:     C x K
+  matrix[C, K] eta_raw;               // class-topic weights: C x K
 }
 
 transformed parameters{
@@ -139,7 +139,7 @@ generated quantities{
   // ------------------------------------------------------------------
   // Log-likelihoods (for model comparison, LOO-CV, etc.)
   // ------------------------------------------------------------------
-  real var_log_lik     = 0;
+  real var_log_lik = 0;
   real response_log_lik = 0;
   real total_log_lik;
 
@@ -147,7 +147,7 @@ generated quantities{
   // Posterior predictive
   // ------------------------------------------------------------------
   array[D] int<lower=1, upper=C> y_pred;
-  array[D] vector[C]             response_probs;
+  array[D] vector[C] response_probs;
 
   // NMF log-likelihood (sparse: skip zero counts still accounting for -lambda)
   for(d in 1:D){
@@ -166,9 +166,9 @@ generated quantities{
     for(c in 1:C){
       linear_pred[c] = dot_product(eta[c, :], theta[d, :]);
     }
-    response_probs[d]  = softmax(linear_pred);
-    y_pred[d]          = categorical_logit_rng(linear_pred);
-    response_log_lik  += categorical_logit_lpmf(y[d] | linear_pred);
+    response_probs[d] = softmax(linear_pred);
+    y_pred[d] = categorical_logit_rng(linear_pred);
+    response_log_lik += categorical_logit_lpmf(y[d] | linear_pred);
   }
 
   total_log_lik = var_log_lik + response_log_lik;
@@ -187,9 +187,9 @@ generated quantities{
         real mean2 = mean(beta[k2, :]);
         vector[V] dev1 = beta[k1] - mean1;
         vector[V] dev2 = beta[k2] - mean2;
-        real cov12     = dot_product(dev1, dev2);
-        real var1      = dot_self(dev1);
-        real var2      = dot_self(dev2);
+        real cov12 = dot_product(dev1, dev2);
+        real var1 = dot_self(dev1);
+        real var2 = dot_self(dev2);
         topic_correlations[k1, k2] = cov12 / (sqrt(var1) * sqrt(var2));
       }
     }
