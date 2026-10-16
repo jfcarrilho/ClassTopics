@@ -7,11 +7,11 @@
 //   beta[k, v]  ~ Dirichlet(alpha_beta)   // variable weights per topic
 //   eta[c, k]   ~ Normal(0, sigma_eta)    // class-topic regression weights
 //
-//   lambda[d, v]  = dot_product(H[d,:], W[:,v])   // Poisson rate
-//   counts[d, v] ~ Poisson(lambda[d, v])     // NMF likelihood
+//   lambda = H * W                        // Poisson rate
+//   counts[d, v] ~ Poisson(lambda[d, v])  // NMF likelihood
 //
-//   linear_pred[d, c] = eta[c,:] * theta[d,:]'
-//   y[d] ~ Categorical(softmax(linear_pred[d]))   // supervised likelihood
+//   linear_pred_mat = eta * theta'
+//   y[d] ~ Categorical(softmax(linear_pred_mat[:, d])) // supervised likelihood
 //
 // Identifiability:
 //   - H and W are non-negative; their product defines the Poisson rate
@@ -39,16 +39,43 @@ data{
   real<lower=0> sigma_eta;                     // Normal prior SD for eta
   
   real<lower=0> lambda_ridge_eta;              // L2 penalty on eta
+  
+  real<lower=0> nmf_weight;                    // multiplicative weight on the
+                                               // unsupervised component of the
+                                               // log-likelihood
+                                               
+  real<lower=0> sup_weight;                    // multiplicative weight on the
+                                               // supervised component of the
+                                               // log-likelihood
 }
 
 transformed data{
-  array[D] int<lower=1> N;
+                                                          
+  int<lower=0> NZ = 0;                  // number of non-zero elements in counts
   for(d in 1:D){
-    N[d] = sum(counts[d,:]);
+    for(v in 1:V){
+      if(counts[d, v] > 0){
+        NZ += 1;                        // If non-zero, increment NZ
+      }
+    }
   }
-  real root_median_N = sqrt(quantile(to_vector(N), 0.5)); // defined here so this
-                                                          // particular calculation
-                                                          // is performed only once
+  
+  array[NZ] int<lower=1, upper=D> nz_d; // Row indexes of non-zero entries
+  array[NZ] int<lower=1, upper=V> nz_v; // Column indexes of non-zero entries
+  vector[NZ] nz_counts;                 // non-zero elements of counts
+  {
+    int idx = 1;
+    for(d in 1:D){
+      for(v in 1:V){
+        if(counts[d, v] > 0){
+          nz_d[idx] = d;
+          nz_v[idx] = v;
+          nz_counts[idx] = counts[d, v];
+        idx += 1;
+        }
+      }
+    }
+  }
 }
 
 parameters{
@@ -69,7 +96,7 @@ transformed parameters{
   //   Obtained according to Carbonetto et al. (2021).
   //
   //   Procedure:
-  //     HU[d, k]    = H[d, k] * u[k]              // scale by topic weight
+  //     HU[d, k] = H[d, k] * u[k]                 // scale by topic weight
   //     theta[d, k] = HU[d, k] / sum_k HU[d, k']  // row-normalise
   //
   //   Rows of theta sum to 1 and are interpretable as the fraction
@@ -82,6 +109,11 @@ transformed parameters{
   }
   
   matrix[C, K] eta = sigma_eta * eta_raw;   // scaled version used in likelihood
+  
+  matrix[D, V] lambda = H * W;              // Poisson rate
+  
+  matrix[C, D] linear_pred_mat = eta * theta'; // linear predictions for
+                                               // supervised likelihood
 }
 
 model{
@@ -112,26 +144,21 @@ model{
   // only when the -lambda term is accounted for separately, so we
   // use target += and handle the full expression explicitly.
   // ------------------------------------------------------------------
-  for(d in 1:D){
-    target += -dot_product(H[d, :], W * rep_vector(1.0, V)) / root_median_N;
-    for(v in 1:V){
-      if (counts[d, v] > 0){
-        real lambda_dv = dot_product(H[d, :], W[:, v]);
-        target += counts[d, v] * log(lambda_dv) / root_median_N;
-      }
-    }
+  
+  vector[NZ] lambda_nz;               // Poisson rate values for non-zero counts
+  for(i in 1:NZ){
+    lambda_nz[i] = lambda[nz_d[i], nz_v[i]];
   }
+  
+  target += nmf_weight * (dot_product(nz_counts, log(lambda_nz)) - sum(lambda));
 
   // ------------------------------------------------------------------
   // Supervised likelihood: categorical with softmax linear predictor
   // linear_pred[c] = eta[c, :] * theta[d, :]'
   // ------------------------------------------------------------------
+  
   for(d in 1:D){
-    vector[C] linear_pred;
-    for (c in 1:C){
-      linear_pred[c] = dot_product(eta[c, :], theta[d, :]);
-    }
-    target += categorical_logit_lpmf(y[d] | linear_pred);
+    target += sup_weight * categorical_logit_lpmf(y[d] | linear_pred_mat[:, d]);
   }
 }
 
@@ -148,27 +175,20 @@ generated quantities{
   // ------------------------------------------------------------------
   array[D] int<lower=1, upper=C> y_pred;
   array[D] vector[C] response_probs;
+  
+  vector[NZ] lambda_nz;
+  for(i in 1:NZ){
+    lambda_nz[i] = lambda[nz_d[i], nz_v[i]];
+  }
 
   // NMF log-likelihood (sparse: skip zero counts still accounting for -lambda)
-  for(d in 1:D){
-    var_log_lik += -dot_product(H[d, :], W * rep_vector(1.0, V));
-    for(v in 1:V){
-      if (counts[d, v] > 0){
-        real lambda_dv = dot_product(H[d, :], W[:, v]);
-        var_log_lik += counts[d, v] * log(lambda_dv);
-      }
-    }
-  }
+  var_log_lik += dot_product(nz_counts, log(lambda_nz)) - sum(lambda);
 
   // Categorical log-likelihood and predictions
   for(d in 1:D){
-    vector[C] linear_pred;
-    for(c in 1:C){
-      linear_pred[c] = dot_product(eta[c, :], theta[d, :]);
-    }
-    response_probs[d] = softmax(linear_pred);
-    y_pred[d] = categorical_logit_rng(linear_pred);
-    response_log_lik += categorical_logit_lpmf(y[d] | linear_pred);
+    response_probs[d] = softmax(linear_pred_mat[:, d]);
+    y_pred[d] = categorical_logit_rng(linear_pred_mat[:, d]);
+    response_log_lik += categorical_logit_lpmf(y[d] | linear_pred_mat[:, d]);
   }
 
   total_log_lik = var_log_lik + response_log_lik;
@@ -183,10 +203,8 @@ generated quantities{
       if(k1 == k2){
         topic_correlations[k1, k2] = 1.0;
       } else {
-        real mean1 = mean(beta[k1, :]);
-        real mean2 = mean(beta[k2, :]);
-        vector[V] dev1 = beta[k1] - mean1;
-        vector[V] dev2 = beta[k2] - mean2;
+        vector[V] dev1 = beta[k1] - 1.0 / V;
+        vector[V] dev2 = beta[k2] - 1.0 / V;
         real cov12 = dot_product(dev1, dev2);
         real var1 = dot_self(dev1);
         real var2 = dot_self(dev2);

@@ -97,6 +97,12 @@
 #' @param lambda_ridge numeric ridge-penalty weight applied to the
 #'                     regression coefficients \code{eta} (default = \code{0},
 #'                     i.e. no ridge penalty)
+#' @param nmf_weight numeric, weight given to the NMF log-likelihood in the
+#'                   total log-likelihood. If \code{NULL} (default), it takes
+#'                   the value of sqrt(median(rowSums(counts)))
+#' @param sup_weight numeric, weight given to the log-likelihood of the
+#'                   supervised component of the model in the total
+#'                   log-likelihood (default = \code{1})
 #' @param n_iter_EM number of iterations of the EM pre-processing (default = \code{10})
 #' @param verbose_EM logical that controls whether EM likelihood is printed
 #'                   (default = \code{TRUE})
@@ -153,6 +159,8 @@ ClassTopics <- function(counts,
                         betadir = TRUE,
                         alpha_beta = 0.05,
                         lambda_ridge = 0,
+                        nmf_weight = NULL,
+                        sup_weight = 1,
                         n_iter_EM = 10,
                         verbose_EM = TRUE,
                         iter_warmup = 1000,
@@ -245,6 +253,10 @@ ClassTopics <- function(counts,
   
   rate <- 1 / mu_target
   
+  if(is.null(nmf_weight)){
+    nmf_weight <- 1 / sqrt(median(rowSums(counts)))
+  }
+  
   stan_init <- lapply(1:chains, function(chain){
     set.seed(chain)
     
@@ -274,7 +286,9 @@ ClassTopics <- function(counts,
     rate = rate,
     alpha_beta = alpha_beta,
     sigma_eta = sigma_eta,
-    lambda_ridge_eta = lambda_ridge
+    lambda_ridge_eta = lambda_ridge,
+    nmf_weight = nmf_weight,
+    sup_weight = sup_weight
   )
   
   if(betadir){
@@ -682,6 +696,12 @@ predict_ClassTopics_EM <- function(
 #' @param lambda_ridge numeric ridge-penalty weight applied to the
 #'                     regression coefficients \code{eta} (default = \code{0},
 #'                     i.e. no ridge penalty)
+#' @param nmf_weight numeric, weight given to the NMF log-likelihood in the
+#'                   total training log-likelihood. If \code{NULL} (default),
+#'                   it takes the value of sqrt(median(rowSums(counts)))
+#' @param sup_weight numeric, weight given to the log-likelihood of the
+#'                   supervised component of the model in the total
+#'                   training log-likelihood (default = \code{1})
 #' @param cores number of CPU cores to use (default = \code{3})
 #' @param chains number of chains to run (default = \code{3})
 #' @param control control parameters for the Stan algorithm
@@ -719,6 +739,8 @@ predict_ClassTopics_EM <- function(
     n_iter_EM_test = 4,
     test_stan = TRUE,
     lambda_ridge = 0,
+    nmf_weight = NULL,
+    sup_weight = 1,
     chains = 3,
     cores = 3,
     control = list(adapt_delta = 0.8,
@@ -765,6 +787,8 @@ predict_ClassTopics_EM <- function(
     iter_sampling = iter_sampling,
     n_iter_EM = n_iter_EM,
     lambda_ridge = lambda_ridge,
+    nmf_weight = nmf_weight,
+    sup_weight = sup_weight,
     chains = chains,
     cores = cores,
     control = control,
@@ -1114,6 +1138,12 @@ predict_ClassTopics_EM <- function(
 #' @param lambda_ridge numeric ridge-penalty weight applied to the
 #'                     regression coefficients `eta` (default = 0, i.e. no
 #'                     ridge penalty)
+#' @param nmf_weight numeric, weight given to the NMF log-likelihood in the
+#'                   total training log-likelihood. If \code{NULL} (default),
+#'                   it takes the value of sqrt(median(rowSums(counts)))
+#' @param sup_weight numeric, weight given to the log-likelihood of the
+#'                   supervised component of the model in the total
+#'                   training log-likelihood (default = \code{1})
 #' @param ... Additional arguments passed to ClassTopics and predict_ClassTopics (both _stan and _EM)
 #'
 #' @return List with accuracy estimates and predictions along with the
@@ -1151,6 +1181,8 @@ predict_ClassTopics_EM <- function(
     n_iter_EM_test = 4,
     test_stan = TRUE,
     lambda_ridge = 0,
+    nmf_weight = NULL,
+    sup_weight = 1,
     chains = 3,
     cores = 3,
     control = list(adapt_delta = 0.8,
@@ -1213,6 +1245,8 @@ predict_ClassTopics_EM <- function(
       iter_sampling = iter_sampling,
       n_iter_EM = n_iter_EM,
       lambda_ridge = lambda_ridge,
+      nmf_weight = nmf_weight,
+      sup_weight = sup_weight,
       chains = chains,
       cores = cores,
       control = control,
@@ -1421,6 +1455,8 @@ predict_ClassTopics_EM <- function(
     iter_sampling = iter_sampling,
     n_iter_EM = n_iter_EM,
     lambda_ridge = lambda_ridge,
+    nmf_weight = nmf_weight,
+    sup_weight = sup_weight,
     chains = chains,
     cores = cores,
     control = control,
@@ -1500,6 +1536,12 @@ predict_ClassTopics_EM <- function(
 #' @param lambda_ridge numeric ridge-penalty weight applied to the
 #'                     regression coefficients `eta` (default = 0, i.e. no
 #'                     ridge penalty)
+#' @param nmf_weight numeric, weight given to the NMF log-likelihood in the
+#'                   total training log-likelihood. If \code{NULL} (default),
+#'                   it takes the value of sqrt(median(rowSums(counts)))
+#' @param sup_weight numeric, weight given to the log-likelihood of the
+#'                   supervised component of the model in the total
+#'                   training log-likelihood (default = \code{1})
 #' @param cores number of CPU cores to use per fold and within the final model (default = \code{3})
 #' @param chains number of chains to run per fold and within the final model (default = \code{3})
 #' @param control control parameters for the Stan algorithm
@@ -1560,6 +1602,8 @@ cv_ClassTopics <- function(
     n_iter_EM_test = 4,
     test_stan = TRUE,
     lambda_ridge = 0,
+    nmf_weight = NULL,
+    sup_weight = 1,
     chains = 3,
     cores = 3,
     control = list(adapt_delta = 0.8,
@@ -1669,6 +1713,9 @@ cv_ClassTopics <- function(
       iter_warmup = iter_warmup,
       iter_sampling = iter_sampling,
       n_iter_EM = n_iter_EM,
+      lambda_ridge = lambda_ridge,
+      nmf_weight = nmf_weight,
+      sup_weight = sup_weight,
       chains = chains,
       cores = cores,
       control = control,
@@ -1717,6 +1764,8 @@ cv_ClassTopics <- function(
           n_iter_EM_test = n_iter_EM_test,
           test_stan = test_stan,
           lambda_ridge = lambda_ridge,
+          nmf_weight = nmf_weight,
+          sup_weight = sup_weight,
           chains = chains,
           cores = cores,
           control = control,

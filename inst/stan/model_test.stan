@@ -3,14 +3,14 @@
 // =============================================================================
 //
 // Generative model:
-//   H[d, k] ~ Gamma(shape, rate)           // topic loadings per patient
+//   H[d, k] ~ Gamma(shape, shape * rate)  // topic loadings per observation
 //   W and eta come from the respective training posterior means
 //
-//   lambda[d, v]  = dot_product(H[d,:], W[:,v]) // Poisson rate
-//   counts[d, v] ~ Poisson(lambda[d, v])          // NMF likelihood
+//   lambda = H * W                        // Poisson rate
+//   counts[d, v] ~ Poisson(lambda[d, v])  // NMF likelihood
 //
-//   linear_pred[d, c] = eta[c,:] * theta[d,:]'
-//   y[d] ~ Categorical(softmax(linear_pred[d]))        // supervised likelihood
+//   linear_pred_mat = eta * theta'
+//   y[d] ~ Categorical(softmax(linear_pred_mat[:, d])) // supervised likelihood
 //
 // Identifiability:
 //   - H and W are non-negative; their product defines the Poisson rate
@@ -34,7 +34,7 @@ data{
   real<lower=0> rate;                          // Gamma prior rate for H
   
   matrix<lower=0>[K, V] W;                     // variable-topic weights:  K x V
-  matrix[C, K]          eta;                   // class-topic weights: C x K
+  matrix[C, K] eta;                            // class-topic weights: C x K
 }
 
 transformed data{
@@ -51,10 +51,36 @@ transformed data{
     u[k] = sum(W[k, :]);
   }
 
+                                                          
+  int<lower=0> NZ = 0;                  // number of non-zero elements in counts
+  for(d in 1:D){
+    for(v in 1:V){
+      if(counts[d, v] > 0){
+        NZ += 1;                        // If non-zero, increment NZ
+      }
+    }
+  }
+  
+  array[NZ] int<lower=1, upper=D> nz_d; // Row indexes of non-zero entries
+  array[NZ] int<lower=1, upper=V> nz_v; // Column indexes of non-zero entries
+  vector[NZ] nz_counts;                 // non-zero elements of counts
+  {
+    int idx = 1;
+    for(d in 1:D){
+      for(v in 1:V){
+        if(counts[d, v] > 0){
+          nz_d[idx] = d;
+          nz_v[idx] = v;
+          nz_counts[idx] = counts[d, v];
+        idx += 1;
+        }
+      }
+    }
+  }
 }
 
 parameters{
-  matrix<lower=0>[D, K] H;                     // topic loadings:      D x K
+  matrix<lower=0>[D, K] H;              // topic loadings:      D x K
 }
 
 transformed parameters{
@@ -65,17 +91,22 @@ transformed parameters{
   //   (see Carbonetto et al. 2021).
   //
   //   Procedure:
-  //     HU[d, k] = H[d, k] * u[k]     // scale by topic weight
-  //     theta[d, k] = HU[d, k] / sum_k HU[d, k']  // row-normalise
+  //     HU[d, k] = H[d, k] * u[k]                 // scale by topic weight
+  //     theta[d, k] = HU[d, k] / sum_k HU[d, k']  // row-normalize
   //
   //   Rows of theta sum to 1 and are interpretable as the fraction
   //   of each patient's variable expression explained by each topic.
   // ------------------------------------------------------------------
   matrix[D, K] theta;
   for(d in 1:D){
-    vector[K] HU_d = H[d, :]' .* u;             // elementwise: K-vector
+    vector[K] HU_d = H[d, :]' .* u;            // elementwise: K-vector
     theta[d, :] = HU_d' / sum(HU_d);
   }
+  
+  matrix[D, V] lambda = H * W;                 // Poisson rate
+  
+  matrix[C, D] linear_pred_mat = eta * theta'; // linear predictions for
+                                               // supervised likelihood
 }
 
 model{
@@ -83,7 +114,7 @@ model{
   // Priors
   // ------------------------------------------------------------------
   for(d in 1:D){
-    H[d, :] ~ gamma(shape, rate);
+    H[d, :] ~ gamma(shape, shape * rate);
   }
 
   // ------------------------------------------------------------------
@@ -92,22 +123,20 @@ model{
   // only when the -lambda term is accounted for separately, so we
   // use target += and handle the full expression explicitly.
   // ------------------------------------------------------------------
-  for(d in 1:D){
-    target += -dot_product(H[d, :], W * rep_vector(1.0, V));
-    for(v in 1:V){
-      if (counts[d, v] > 0){
-        real lambda_dv = dot_product(H[d, :], W[:, v]);
-        target += counts[d, v] * log(lambda_dv);
-      }
-    }
+  
+  vector[NZ] lambda_nz;               // Poisson rate values for non-zero counts
+  for(i in 1:NZ){
+    lambda_nz[i] = lambda[nz_d[i], nz_v[i]];
   }
+  
+  target += dot_product(nz_counts, log(lambda_nz)) - sum(lambda);
 }
 
 generated quantities{
   // ------------------------------------------------------------------
   // Log-likelihoods (for model comparison, LOO-CV, etc.)
   // ------------------------------------------------------------------
-  real var_log_lik     = 0;
+  real var_log_lik = 0;
   real response_log_lik = 0;
   real total_log_lik;
 
@@ -115,28 +144,21 @@ generated quantities{
   // Posterior predictive
   // ------------------------------------------------------------------
   array[D] int<lower=1, upper=C> y_pred;
-  array[D] vector[C]             response_probs;
+  array[D] vector[C] response_probs;
+  
+  vector[NZ] lambda_nz;
+  for(i in 1:NZ){
+    lambda_nz[i] = lambda[nz_d[i], nz_v[i]];
+  }
 
   // NMF log-likelihood (sparse: skip zero counts still accounting for -lambda)
-  for(d in 1:D){
-    var_log_lik += -dot_product(H[d, :], W * rep_vector(1.0, V));
-    for(v in 1:V){
-      if (counts[d, v] > 0){
-        real lambda_dv = dot_product(H[d, :], W[:, v]);
-        var_log_lik += counts[d, v] * log(lambda_dv);
-      }
-    }
-  }
+  var_log_lik += dot_product(nz_counts, log(lambda_nz)) - sum(lambda);
 
   // Categorical log-likelihood and predictions
   for(d in 1:D){
-    vector[C] linear_pred;
-    for(c in 1:C){
-      linear_pred[c] = dot_product(eta[c, :], theta[d, :]);
-    }
-    response_probs[d]  = softmax(linear_pred);
-    y_pred[d]          = categorical_logit_rng(linear_pred);
-    response_log_lik  += categorical_logit_lpmf(y[d] | linear_pred);
+    response_probs[d] = softmax(linear_pred_mat[:, d]);
+    y_pred[d] = categorical_logit_rng(linear_pred_mat[:, d]);
+    response_log_lik += categorical_logit_lpmf(y[d] | linear_pred_mat[:, d]);
   }
 
   total_log_lik = var_log_lik + response_log_lik;
