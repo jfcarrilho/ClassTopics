@@ -488,13 +488,13 @@ predict_ClassTopics_stan <- function(
   
   mu_target <- sqrt(mean(counts_test) / K)
   
-  rate <- shape / mu_target
+  rate <- 1 / mu_target
   
   stan_init <- lapply(1:chains, function(chain){
     set.seed(chain)
     
     # Fresh random initialisation for each chain
-    H0 <- matrix(rgamma(D * K, shape = shape, rate = rate), D, K)
+    H0 <- matrix(rgamma(D * K, shape = shape, rate = shape * rate), D, K)
     
     return(.em_nmf(
       H = H0,
@@ -621,9 +621,9 @@ predict_ClassTopics_EM <- function(
   
   mu_target <- sqrt(mean(counts_test) / K)
   
-  rate <- shape / mu_target
+  rate <- 1 / mu_target
   
-  H0 <- matrix(rgamma(D * K, shape = shape, rate = rate), D, K)
+  H0 <- matrix(rgamma(D * K, shape = shape, rate = shape * rate), D, K)
   
   H <- .em_nmf(
     H = H0,
