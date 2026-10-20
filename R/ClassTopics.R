@@ -804,7 +804,7 @@ predict_ClassTopics_EM <- function(
   W_pred <- apply(W_samples_pred, c(2, 3), mean)
   
   eta_samples <- rstan::extract(fit_fold, "eta")$eta
-  eta_uncentered_fold <- matrix(apply(eta_samples, 1, mean), C, K_topics)
+  eta_uncentered_fold <- apply(eta_samples, c(2, 3), mean)
   eta_means_mat <- matrix(colMeans(eta_uncentered_fold),
                           nrow = C, ncol = K_topics, byrow = T)
   eta_fold <- eta_uncentered_fold - eta_means_mat
@@ -1262,7 +1262,7 @@ predict_ClassTopics_EM <- function(
     W_pred <- apply(W_samples_pred, c(2, 3), mean)
     
     eta_samples <- rstan::extract(fit_fold, "eta")$eta
-    eta_uncentered_fold <- matrix(apply(eta_samples, 1, mean), C, K_topics)
+    eta_uncentered_fold <- apply(eta_samples, c(2, 3), mean)
     eta_means_mat <- matrix(colMeans(eta_uncentered_fold),
                             nrow = C, ncol = K_topics, byrow = T)
     eta_fold <- eta_uncentered_fold - eta_means_mat
@@ -1884,7 +1884,7 @@ ClassTopics_results <- function(fit, true_response,
   }
   
   eta_samples <- rstan::extract(fit, "eta")$eta
-  eta_uncentered <- matrix(apply(eta_samples, 1, mean), C, K)
+  eta_uncentered <- apply(eta_samples, c(2, 3), mean)
   eta_means_mat <- matrix(colMeans(eta_uncentered),
                           nrow = C, ncol = K, byrow = T)
   
@@ -1908,10 +1908,10 @@ ClassTopics_results <- function(fit, true_response,
   
   # Regression coefficients
   eta_mean <- eta_uncentered - eta_means_mat
-  eta_lower <- matrix(apply(eta_samples, 1, quantile, probs = alpha_level),
-                      C, K) - eta_means_mat
-  eta_upper <- matrix(apply(eta_samples, 1, quantile, probs = 1 - alpha_level),
-                      C, K) - eta_means_mat
+  eta_lower <- apply(eta_samples, c(2, 3), quantile, probs = alpha_level) -
+    eta_means_mat
+  eta_upper <- apply(eta_samples, c(2, 3), quantile, probs = 1 - alpha_level) -
+    eta_means_mat
   
   # Extract predictions
   y_pred_samples <- rstan::extract(fit, "y_pred")$y_pred
